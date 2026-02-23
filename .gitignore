@@ -1,0 +1,5 @@
+*.pt
+*.csv
+runs/
+__pycache__/
+venv/
