@@ -1,7 +1,7 @@
 import torch,argparse
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
-from src import utils,models,train
+from src import utils,models,train,data
 
 #ARGS 
 parser = argparse.ArgumentParser()
@@ -21,14 +21,17 @@ batch = args.batch_size
 lr = args.lr
 device = args.device
 
-texto = "Patata"
-texto = texto.encode(encoding="utf-8",errors="replace")
-print(list(texto))
-# DATALOADERS CREATION
-# First position pattern
-# X_train = torch.tensor([[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0]],dtype=torch.float32).to(device)
-# Y_train = torch.tensor([[0],[1],[0],[1],[0]],dtype=torch.float32).to(device)
 
+# DATALOADERS CREATION
+window = 5
+numworkers = 10
+persistent_workers = True
+pin_memory = True
+
+X_train = data.generate_data(window,batch,numworkers,persistent_workers,pin_memory)
+Y_train = data.generate_data(window,batch,numworkers,persistent_workers,pin_memory)
+
+print(X_train,Y_train)
 # X_eval = torch.tensor([[1,0,1],[1,1,0],[1,1,1]],dtype=torch.float32).to(device)
 # Y_eval = torch.tensor([[1],[0],[1]],dtype=torch.float32).to(device)
 

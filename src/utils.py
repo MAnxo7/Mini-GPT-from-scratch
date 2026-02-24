@@ -49,3 +49,11 @@ def load_checkpoint(path, model=None, optimizer=None, map_location="cpu"):
     if optimizer is not None and ckpt.get("optimizer") is not None:
         optimizer.load_state_dict(ckpt["optimizer"])
     return ckpt
+
+
+def encode(text:str) -> list:
+   text = text.encode(encoding="utf-8",errors="replace")
+   return list(text)
+
+def decode(list_bytes:list) -> str:
+    return str(list_bytes)

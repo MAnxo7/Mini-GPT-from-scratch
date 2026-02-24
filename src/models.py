@@ -35,9 +35,3 @@ class mini_GPT(torch.nn.Module):
 
         self.encoder = torch.nn.Enco
     
-    def __encode__(text:str) -> list:
-       text = text.encode(encoding="utf-8",errors="replace")
-       return list(text)
-
-    def __decode__(list_bytes:list) -> str:
-        return str(list_bytes)
