@@ -28,10 +28,11 @@ numworkers = 10
 persistent_workers = True
 pin_memory = True
 
-X_train = data.generate_data(window,batch,numworkers,persistent_workers,pin_memory)
-Y_train = data.generate_data(window,batch,numworkers,persistent_workers,pin_memory)
+dataset = data.generate_data(window,batch)
 
-print(X_train,Y_train)
+X, _ = dataset[0]
+print(X.shape)
+
 # X_eval = torch.tensor([[1,0,1],[1,1,0],[1,1,1]],dtype=torch.float32).to(device)
 # Y_eval = torch.tensor([[1],[0],[1]],dtype=torch.float32).to(device)
 
