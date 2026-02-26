@@ -1,7 +1,7 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
 from . import utils
-def generate_data(window : int, batch_size : int, file : str = "tiny_shakespre.txt") -> tuple[TensorDataset,str]:
+def generate_data(window : int, file : str = "tiny_shakespare.txt") -> tuple[TensorDataset,str]:
     """Generates a dataset with the *.txt file given
 
     Parameters

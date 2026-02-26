@@ -33,5 +33,6 @@ class mini_GPT(torch.nn.Module):
         self.embeds = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.long).to(device)
         self.pos_embeds = torch.nn.Embedding(context_L,d_model,dtype = torch.long)
 
-        self.encoder = torch.nn.Enco
+        for i in range(0,n_layers)
+            self.decoder = torch.nn.TransformerDecoderLayer(d_model,n_heads,d_ff,dropout,) # fALTA POR PONER PARAMETROS
     

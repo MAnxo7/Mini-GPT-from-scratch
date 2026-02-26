@@ -56,4 +56,5 @@ def encode(text:str) -> list:
    return list(text)
 
 def decode(list_bytes:list) -> str:
-    return str(list_bytes)
+    bytes_to_decode = bytes(list_bytes)
+    return bytes_to_decode.decode(encoding="utf-8",errors="replace")
