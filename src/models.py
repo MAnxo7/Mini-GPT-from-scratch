@@ -30,9 +30,24 @@ class mini_GPT(torch.nn.Module):
         d_ff = 4*d_model  #(MLP interno)
         dropout = 0.1
 
-        self.embeds = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.long).to(device)
-        self.pos_embeds = torch.nn.Embedding(context_L,d_model,dtype = torch.long)
+        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.long).to(device)
+        self.pos_embeds_layer = torch.nn.Embedding(context_L,d_model,dtype = torch.long).to(device)
+        
+        decoder_layer = torch.nn.TransformerDecoderLayer(d_model,n_heads,d_ff,dropout,batch_first=True) 
+        self.decoder = torch.nn.TransformerDecoder(decoder_layer,n_layers).to(device)
 
-        for i in range(0,n_layers)
-            self.decoder = torch.nn.TransformerDecoderLayer(d_model,n_heads,d_ff,dropout,) # fALTA POR PONER PARAMETROS
+        self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB)
+    
+    def forward(self, X):
+
+        positions = torch.arange(0,X.shape[2])
+
+        X = self.embeds_layer(X)
+        P = self.pos_embeds_layer(positions)
+
+        X = torch.add(X,P)
+
+        X = self.decoder(X)
+
+
     
