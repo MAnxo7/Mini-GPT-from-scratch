@@ -1,7 +1,7 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
 from . import utils
-def generate_data(window : int, file : str = "tiny_shakespare.txt") -> tuple[TensorDataset,str]:
+def generate_data(window : int, device : str, file : str = "./tiny_shakespare.txt") -> tuple[TensorDataset,str]:
     """Generates a dataset with the *.txt file given
 
     Parameters
@@ -15,12 +15,12 @@ def generate_data(window : int, file : str = "tiny_shakespare.txt") -> tuple[Ten
     -------
     A tuple composed of the dataset token-bytes and the text of the file given as string.
     """
-
+    print("file =", file, "type =", type(file))
     f = open(file)
     txt = f.read()
     data = utils.encode(txt)
-    X_data = torch.tensor(data,dtype=torch.short)
-    Y_data = torch.tensor(data[1:],dtype=torch.short)
+    X_data = torch.tensor(data,dtype=torch.int).to(device)
+    Y_data = torch.tensor(data[1:],dtype=torch.int).to(device)
     X_data = X_data.unfold(0,window,window-1) # (a,b,c,d,e),(e,f,g,h,i)
     Y_data = Y_data.unfold(0,window,window-1) # (b,c,d,e,f),(f,g,h,i,j)
     

@@ -28,37 +28,27 @@ numworkers = 10
 persistent_workers = True
 pin_memory = True
 
-dataset = data.generate_data(window,batch)
+dataset_train, _ = data.generate_data(window,device)
+dataset_eval, _ = data.generate_data(window,devoce)
 
-X, _ = dataset[0]
-print(X.shape)
+dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch, num_workers=10,persistent_workers=True,pin_memory=True)
+dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch, num_workers=10,persistent_workers=True,pin_memory=True)
 
-# X_eval = torch.tensor([[1,0,1],[1,1,0],[1,1,1]],dtype=torch.float32).to(device)
-# Y_eval = torch.tensor([[1],[0],[1]],dtype=torch.float32).to(device)
+model = models.mini_GPT(device)
 
-# dataset_train = TensorDataset(X_train,Y_train)
-# dataset_eval = TensorDataset(X_eval,Y_eval)
+opt = torch.optim.Adam(params=model.parameters(),lr=lr)
+loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
-
-# dataloader_train = DataLoader(dataset_train,shuffle=False,batch_size=batch)
-# dataloader_eval = DataLoader(dataset_eval,shuffle=False,batch_size=batch)
-
-# #SPECS
-# model = models.BasicNN(30,X_train.shape[1],1,device)
-
-# opt = torch.optim.Adam(params=model.parameters(),lr=lr)
-# loss_fn = torch.nn.BCEWithLogitsLoss().to(device)
-
-# #TRAIN OR EVAL
-# if args.eval_only:
-#     if args.ckpt_path is None:
-#         raise ValueError("You should specific --ckpt-path when use --eval-only")
-#     utils.load_checkpoint(args.ckpt_path,model,opt)
-#     val_metrics = train.evaluate(model,dataloader_eval,loss_fn,device)
-#     print(f"Eval - Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}")
+ #TRAIN OR EVAL
+if args.eval_only:
+    if args.ckpt_path is None:
+        raise ValueError("You should specific --ckpt-path when use --eval-only")
+    utils.load_checkpoint(args.ckpt_path,model,opt)
+    val_metrics = train.evaluate(model,dataloader_eval,loss_fn,device)
+    print(f"Eval - Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}")
     
-# else:
-#     train.fit(model,device,dataloader_train,dataloader_eval,opt,loss_fn,epochs,early_stopping=500)
-
+else:
+    train.fit(model,device,dataloader_train,dataloader_eval,opt,loss_fn,epochs,early_stopping=500)
+    print(model("That sort was well ")) # That sort was well fished for.
 
 

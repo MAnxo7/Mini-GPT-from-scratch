@@ -20,7 +20,7 @@ class BasicNN(torch.nn.Module):
         return self.capas[len(self.capas)-1](input)
 
 class mini_GPT(torch.nn.Module):
-    def __init__(self, X_data, device):
+    def __init__(self, device):
         super().__init__()
         VOCAB = 256
         d_model = 256
@@ -30,24 +30,35 @@ class mini_GPT(torch.nn.Module):
         d_ff = 4*d_model  #(MLP interno)
         dropout = 0.1
 
-        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.long).to(device)
-        self.pos_embeds_layer = torch.nn.Embedding(context_L,d_model,dtype = torch.long).to(device)
+        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.float).to(device)
+        self.pos_embeds_layer = torch.nn.Embedding(context_L,d_model,dtype = torch.float).to(device)
         
-        decoder_layer = torch.nn.TransformerDecoderLayer(d_model,n_heads,d_ff,dropout,batch_first=True) 
-        self.decoder = torch.nn.TransformerDecoder(decoder_layer,n_layers).to(device)
+        # I use encoder in Pytorch because Pytorch doen't have a decoder_only layer. The torch.nn.TransformerDecoderLayer is equivalent to Encoder-Decoder instead
+        # decoder only.
+        decoder_layer = torch.nn.TransformerEncoderLayer(d_model,n_heads,d_ff,dropout,batch_first=True) 
+        self.decoder = torch.nn.TransformerEncoder(decoder_layer,n_layers).to(device)
 
         self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB)
     
     def forward(self, X):
 
-        positions = torch.arange(0,X.shape[2])
+        positions = torch.arange(0,X.shape[-1])
 
         X = self.embeds_layer(X)
         P = self.pos_embeds_layer(positions)
 
         X = torch.add(X,P)
 
-        X = self.decoder(X)
+        causal_mask = positions.view(1,1,1,-1) > positions.view(1,1,-1,1)
+        print(causal_mask)
+        
+        X = self.decoder(X,mask=causal_mask) 
+        
+        X = self.linear_layer(X)
+        X = torch.relu(X)
+
+        return torch.softmax(X)
+
 
 
     
