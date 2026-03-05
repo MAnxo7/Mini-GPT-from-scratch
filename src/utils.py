@@ -22,10 +22,10 @@ def get_device():
         return torch.device("cuda")
     return torch.device("cpu")
 
-def binary_accuracy_from_logits(logits, y_true, thr=0.5):
+def accuracy_from_logits(logits, y_true, thr=0.5):
     import torch
-    probs = torch.sigmoid(logits)
-    preds = (probs>thr).int()
+    logits_sm = torch.softmax(logits,dim=-2)
+    preds = torch.argmax(logits_sm,dim=-1)
     correct = torch.sum((preds==y_true).int()).item()
     nelems = torch.numel(preds)
     return correct/nelems

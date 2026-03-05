@@ -25,7 +25,7 @@ class mini_GPT(torch.nn.Module):
         VOCAB = 256
         d_model = 256
         context_L = 256
-        n_heads = 8
+        self.n_heads = 8
         n_layers = 6
         d_ff = 4*d_model  #(MLP interno)
         dropout = 0.1
@@ -35,29 +35,28 @@ class mini_GPT(torch.nn.Module):
         
         # I use encoder in Pytorch because Pytorch doen't have a decoder_only layer. The torch.nn.TransformerDecoderLayer is equivalent to Encoder-Decoder instead
         # decoder only.
-        decoder_layer = torch.nn.TransformerEncoderLayer(d_model,n_heads,d_ff,dropout,batch_first=True) 
+        decoder_layer = torch.nn.TransformerEncoderLayer(d_model,self.n_heads,d_ff,dropout,batch_first=True).to(device) 
         self.decoder = torch.nn.TransformerEncoder(decoder_layer,n_layers).to(device)
 
-        self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB)
+        self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB).to(device)
     
-    def forward(self, X):
+    def forward(self, X : torch.Tensor):
 
-        positions = torch.arange(0,X.shape[-1])
+        positions = torch.arange(0,X.shape[-1]).to(X.get_device())
 
         X = self.embeds_layer(X)
         P = self.pos_embeds_layer(positions)
 
         X = torch.add(X,P)
 
-        causal_mask = positions.view(1,1,1,-1) > positions.view(1,1,-1,1)
-        print(causal_mask)
+        causal_mask = positions.view(1,1,-1) > positions.view(1,-1,1)
+        causal_mask = causal_mask.expand(size=(self.n_heads*X.shape[0],causal_mask.shape[-1],causal_mask.shape[-1]))
         
         X = self.decoder(X,mask=causal_mask) 
         
         X = self.linear_layer(X)
-        X = torch.relu(X)
 
-        return torch.softmax(X)
+        return X
 
 
 

@@ -80,10 +80,17 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
 def train_one_epoch(model, loader, optimizer, loss_fn, device): 
     model.train()
     train_loss,train_acc,n_samples = 0.0,0.0,0
+    cont = 0
     for xn,yn in loader:
+        #cont+= xn.numel() #278848
+        #print(cont)
         xn, yn = xn.to(device), yn.to(device)  
         optimizer.zero_grad()
         logits = model(xn)
+        # Reshaping 
+        logits = torch.reshape(logits,(-1,logits.shape[-1]))
+        yn = torch.reshape(yn,(-1,))
+
         loss = loss_fn(logits,yn)
         loss.backward()
         #for name,param in model.named_parameters():
@@ -92,7 +99,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         #Metrics
         samples = xn.size(0)
         train_loss += loss.item()*samples
-        train_acc += utils.binary_accuracy_from_logits(logits, yn)*samples
+        train_acc += utils.accuracy_from_logits(logits, yn)*samples
         n_samples+=samples
     return {"train_loss":train_loss/n_samples,"train_acc":train_acc/n_samples}
         
@@ -104,10 +111,14 @@ def evaluate(model,loader, loss_fn, device):
         for xn,yn in loader:
             xn, yn = xn.to(device), yn.to(device)  
             logits = model(xn)
+            # Reshaping 
+            logits = torch.reshape(logits,(-1,logits.shape[-1]))
+            yn = torch.reshape(yn,(-1,))
+
             loss = loss_fn(logits,yn)
             #Metrics
             samples = xn.size(0)
             eval_loss += loss.item()*samples
-            eval_acc += utils.binary_accuracy_from_logits(logits, yn)*samples
+            eval_acc += utils.accuracy_from_logits(logits, yn)*samples
             n_samples+=samples
     return {"eval_loss":eval_loss/n_samples,"eval_acc":eval_acc/n_samples}

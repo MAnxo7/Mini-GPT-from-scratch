@@ -29,10 +29,10 @@ persistent_workers = True
 pin_memory = True
 
 dataset_train, _ = data.generate_data(window,device)
-dataset_eval, _ = data.generate_data(window,devoce)
+dataset_eval, _ = data.generate_data(window,device)
 
-dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch, num_workers=10,persistent_workers=True,pin_memory=True)
-dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch, num_workers=10,persistent_workers=True,pin_memory=True)
+dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
+dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
 
 model = models.mini_GPT(device)
 

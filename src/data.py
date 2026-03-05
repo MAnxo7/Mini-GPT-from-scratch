@@ -19,8 +19,8 @@ def generate_data(window : int, device : str, file : str = "./tiny_shakespare.tx
     f = open(file)
     txt = f.read()
     data = utils.encode(txt)
-    X_data = torch.tensor(data,dtype=torch.int).to(device)
-    Y_data = torch.tensor(data[1:],dtype=torch.int).to(device)
+    X_data = torch.tensor(data[:-1],dtype=torch.long)
+    Y_data = torch.tensor(data[1:],dtype=torch.long)
     X_data = X_data.unfold(0,window,window-1) # (a,b,c,d,e),(e,f,g,h,i)
     Y_data = Y_data.unfold(0,window,window-1) # (b,c,d,e,f),(f,g,h,i,j)
     
