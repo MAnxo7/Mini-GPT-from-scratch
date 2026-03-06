@@ -1,6 +1,6 @@
 import torch
 import os,csv,datetime, time
-from . import utils, viz
+from . import utils,viz
 #CSV: epoch, split, loss, acc, lr, time.
 def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, scheduler=None, early_stopping=None, run_dir=os.path.join(".","runs")):
     if epochs <= 0:

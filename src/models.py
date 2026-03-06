@@ -26,7 +26,7 @@ class mini_GPT(torch.nn.Module):
         d_model = 256
         context_L = 256
         self.n_heads = 8
-        n_layers = 6
+        n_layers = 4
         d_ff = 4*d_model  #(MLP interno)
         dropout = 0.1
 
@@ -37,6 +37,10 @@ class mini_GPT(torch.nn.Module):
         # decoder only.
         decoder_layer = torch.nn.TransformerEncoderLayer(d_model,self.n_heads,d_ff,dropout,batch_first=True).to(device) 
         self.decoder = torch.nn.TransformerEncoder(decoder_layer,n_layers).to(device)
+
+        for p in self.decoder.parameters():
+            if p.dim() > 1:
+                torch.nn.init.xavier_uniform_(p)
 
         self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB).to(device)
     
