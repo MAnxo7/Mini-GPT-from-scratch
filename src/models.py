@@ -46,7 +46,7 @@ class mini_GPT(torch.nn.Module):
     
     def forward(self, X : torch.Tensor):
 
-        positions = torch.arange(0,X.shape[-1]).to(X.get_device())
+        positions = torch.arange(0,X.shape[-1]).to(X.device)
 
         X = self.embeds_layer(X)
         P = self.pos_embeds_layer(positions)

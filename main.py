@@ -23,13 +23,13 @@ device = args.device
 
 
 # DATALOADERS CREATION
-window = 256
+window = 64
 numworkers = 10
 persistent_workers = True
 pin_memory = True
+file = "./tiny_shakespare_ultra_little.txt"
 
-dataset_train, _ = data.generate_data(window,device,file="./tiny_shakespare_little.txt")
-dataset_eval, _ = data.generate_data(window,device,file="./tiny_shakespare_little.txt")
+dataset_train, dataset_eval = data.generate_data(window,file=file)
 
 dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
 dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
