@@ -20,17 +20,17 @@ class BasicNN(torch.nn.Module):
         return self.capas[len(self.capas)-1](input)
 
 class mini_GPT(torch.nn.Module):
-    def __init__(self, device):
+    def __init__(self, device, dropout = 0.1):
         super().__init__()
         VOCAB = 256
         d_model = 256
         context_L = 256
         self.n_heads = 8
-        n_layers = 4
+        n_layers = 6
         d_ff = 4*d_model  #(MLP interno)
-        dropout = 0.1
+        dropout = dropout
 
-        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,padding_idx=0,dtype = torch.float).to(device)
+        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,dtype = torch.float).to(device)
         self.pos_embeds_layer = torch.nn.Embedding(context_L,d_model,dtype = torch.float).to(device)
         
         # I use encoder in Pytorch because Pytorch doen't have a decoder_only layer. The torch.nn.TransformerDecoderLayer is equivalent to Encoder-Decoder instead
@@ -53,13 +53,10 @@ class mini_GPT(torch.nn.Module):
 
         X = torch.add(X,P)
 
-        causal_mask = positions.view(1,1,-1) > positions.view(1,-1,1)
-        causal_mask = causal_mask.expand(size=(self.n_heads*X.shape[0],causal_mask.shape[-1],causal_mask.shape[-1]))
-        
+        causal_mask = positions.view(1,-1) > positions.view(-1,1)
         X = self.decoder(X,mask=causal_mask) 
         
         X = self.linear_layer(X)
-
         return X
 
 

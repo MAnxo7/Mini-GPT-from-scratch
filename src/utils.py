@@ -26,6 +26,8 @@ def accuracy_from_logits(logits, y_true):
     import torch
     logits_sm = torch.softmax(logits,dim=-1)
     preds = torch.argmax(logits_sm,dim=-1)
+    #print("preds=",preds)
+    #print("y_true=",y_true)
     correct = torch.sum((preds==y_true).int()).item()
     nelems = torch.numel(preds)
     return correct/nelems
@@ -43,7 +45,8 @@ def save_checkpoint(model, optimizer, epoch, path, extra: dict | None = None):
     
 def load_checkpoint(path, model=None, optimizer=None, map_location="cpu"):
     import torch
-    ckpt = torch.load(path, map_location=map_location)
+    print(path)
+    ckpt = torch.load(path, map_location=map_location, weights_only=False)
     if model is not None:
         model.load_state_dict(ckpt["model"])
     if optimizer is not None and ckpt.get("optimizer") is not None:

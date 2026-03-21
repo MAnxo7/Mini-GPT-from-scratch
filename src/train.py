@@ -2,13 +2,15 @@ import torch
 import os,csv,datetime, time
 from . import utils,viz
 #CSV: epoch, split, loss, acc, lr, time.
-def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, scheduler=None, early_stopping=None, run_dir=os.path.join(".","runs")):
+def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, scheduler=None, warmup=True, early_stopping=None, run_dir=os.path.join(".","runs")):
     if epochs <= 0:
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epochs or using --eval-only")
     print(device)
     act_epoch,last_improve = 0,0
     pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
+    warmup_steps = (int)(0.05*epochs) if warmup else 0 # The number of warmup_steps is the 5% of total steps
+    lr_target = optimizer.param_groups[0]['lr'] # Original learning rate, this is the learning rate which is used after the warmup
     run_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     thisrun_path = os.path.join(run_dir,run_date)
     os.makedirs(thisrun_path,exist_ok=True)
@@ -24,18 +26,24 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
         writer.writerow(["epoch","split","loss","acc","lr","duration_s"])
     while(act_epoch < epochs and last_improve < vpatience):
         print("epoch nº",act_epoch)
+        #WARMUP
+        if warmup:    
+            optimizer.param_groups[0]['lr'] = lr_target * ((act_epoch+1) / warmup_steps)
+        if warmup and act_epoch+1 >= warmup_steps:
+            warmup = False
+        #print("lr",optimizer.param_groups[0]['lr'])
         #TRAIN
         t0 = time.time()
         train_metrics = train_one_epoch(model,train_loader,optimizer,loss_fn,device)
         train_time = time.time() - t0
-        #EVALUATE
+        #EVALUATE 
         t0 = time.time()
         eval_metrics = evaluate(model,val_loader,loss_fn,device)
         eval_time = time.time() - t0
         #SAVE EPOCH TIME
         epoch_time_list.append(train_time+eval_time)
-        #SCHEDULER 
-        if scheduler is not None:
+        #WARMUP AND SCHEDULER 
+        if not warmup and scheduler is not None:
             if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                 scheduler.step(eval_metrics["eval_loss"])
             else:
@@ -64,7 +72,7 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
         utils.save_checkpoint(model,optimizer,act_epoch,last_ckpt_path,scheduler)
         act_epoch+=1
     if last_improve >= vpatience:
-        utils.load_checkpoint(best_ckpt_path,model,optimizer,scheduler)
+        utils.load_checkpoint(best_ckpt_path,model,optimizer)
         
     viz.plot_from_csv(csv_path)
     
@@ -80,11 +88,14 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
 def train_one_epoch(model, loader, optimizer, loss_fn, device): 
     model.train()
     train_loss,train_acc,n_samples = 0.0,0.0,0
-    cont = 0
     for xn,yn in loader:
         #cont+= xn.numel() #278848
         #print(cont)
+        #print(xn,yn)
+        #print(utils.decode(xn.squeeze().tolist()))
         xn, yn = xn.to(device), yn.to(device)  
+        #print(yn.squeeze(dim=0).tolist()[0])
+        #print("\"",utils.decode(xn.squeeze(dim=0).tolist()[0]),"\"")
         optimizer.zero_grad()
         logits = model(xn)
         # Reshaping 
@@ -94,7 +105,8 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         loss = loss_fn(logits,yn)
         loss.backward()
         #for name,param in model.named_parameters():
-        #    print(name,param.grad.norm())
+        #   print(name,param.grad.norm())
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5) # Gradient Clipping
         optimizer.step()
         #Metrics
         samples = xn.size(0)
