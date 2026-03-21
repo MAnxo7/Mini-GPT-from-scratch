@@ -38,10 +38,14 @@ def generate_data(window : int, file : str = "./tiny_shakespare.txt", eval_thr :
         txt_eval = delimiter.join(txt_lines[line_of_cut:])
         data_eval = utils.encode(txt_eval)
 
+        data_eval = data_eval[0:window:1]
+        print(data_eval)
         #X_data_eval  = torch.tensor(data_eval[:-1],dtype=torch.long)
         #Y_data_eval  = torch.tensor(data_eval[1:],dtype=torch.long)
         #X_data_eval  = X_data_eval.unfold(0,window,1) # (a,b,c,d,e),(b,c,d,e,f)
         #Y_data_eval  = Y_data_eval.unfold(0,window,1) # (b,c,d,e,f),(c,d,e,f,g)
+
+
 
         eval_dataset = TensorDataset(X_data_eval,Y_data_eval)
         txt_train = delimiter.join(txt_lines[:line_of_cut])
