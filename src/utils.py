@@ -1,5 +1,7 @@
+import torch
+
 def set_seed(seed: int, deterministic: bool = False):
-    import os, random, numpy as np, torch
+    import os, random, numpy as np
     random.seed(seed)
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -17,13 +19,11 @@ def set_seed(seed: int, deterministic: bool = False):
         torch.backends.cudnn.benchmark = True 
         
 def get_device():
-    import torch
     if torch.cuda.is_available():
         return torch.device("cuda")
     return torch.device("cpu")
 
 def accuracy_from_logits(logits, y_true):
-    import torch
     logits_sm = torch.softmax(logits,dim=-1)
     preds = torch.argmax(logits_sm,dim=-1)
     #print("preds=",preds)
@@ -33,7 +33,7 @@ def accuracy_from_logits(logits, y_true):
     return correct/nelems
 
 def save_checkpoint(model, optimizer, epoch, path, extra: dict | None = None):
-    import torch, os
+    import os
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
         "model": model.state_dict(),
@@ -44,7 +44,6 @@ def save_checkpoint(model, optimizer, epoch, path, extra: dict | None = None):
     torch.save(payload, path)
     
 def load_checkpoint(path, model=None, optimizer=None, map_location="cpu"):
-    import torch
     print(path)
     ckpt = torch.load(path, map_location=map_location, weights_only=False)
     if model is not None:
@@ -61,3 +60,29 @@ def encode(text:str) -> list:
 def decode(list_bytes:list) -> str:
     bytes_to_decode = bytes(list_bytes)
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
+
+
+def gen_text(model : torch.nn.Module , text_start : str , nletters : int , device : torch.device = get_device()):
+
+    model.eval()
+
+    text_result : str = text_start
+    byte_text = encode(text_start)
+    window = len(text_start)
+
+    for _ in range(0,nletters):
+        t_text_start = torch.tensor([byte_text],device=device)
+        logits = torch.squeeze(model(t_text_start),dim=0)
+        #print(logits)
+        logits_sm = torch.softmax(logits,dim=-1)
+        #print(logits_sm)
+        logits_argmax = torch.argmax(logits_sm,dim=1)
+        #print(logits_argmax)
+        logits_bytes_txt = torch.squeeze(logits_argmax).tolist()
+        #print(lista_txt)
+        #print("TEXT:",decode(logits_bytes_txt))
+        text_result = text_result + decode([logits_bytes_txt[-1]])
+        #print("NEXTTEXT",len(text_result[len(text_result)-window:]))
+        byte_text = encode(text_result[len(text_result)-window:])
+    
+    print(text_result)

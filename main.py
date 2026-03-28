@@ -16,6 +16,7 @@ args = parser.parse_args()
 #BASIC CONFIG
 utils.set_seed(0,deterministic=True)
 
+
 epochs = args.epochs
 batch = args.batch_size
 lr = args.lr
@@ -28,15 +29,17 @@ else:
     warmup = False
 
 # DATALOADERS CREATION
-window = 32
+window = 256
 numworkers = 10
 persistent_workers = True
 pin_memory = True
-file = "./tiny_shakespare_ultra_little.txt"
+file = "./tiny_shakespare_little.txt"
 
-dataset_train, dataset_eval = data.generate_data(window,file=file,eval_thr=0)
+dataset_train, dataset_eval = data.generate_data(window,file=file)
+print(dataset_train)
 dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
 dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
+
 
 model = models.mini_GPT(device,dropout=0.1)
 
@@ -50,27 +53,22 @@ if args.eval_only:
     if args.ckpt_path is None:
         raise ValueError("You should specific --ckpt-path when use --eval-only")
     utils.load_checkpoint(args.ckpt_path,model,opt)
-    val_metrics = train.evaluate(model,dataloader_eval,loss_fn,device)
+    val_metrics = train.evaluate(model,dataloader_eval,loss_fn,device) # MODIFICADO, DEBERIA SER DATALOADER_EVAL
     print(f"Eval - Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}")
     
 else:
-    train.fit(model,device,dataloader_train,dataloader_train,opt,loss_fn,epochs,early_stopping=100,scheduler=None,warmup=False)
-    preds = " poor citizens, the patricians g"
-    model.eval()
-    t_preds = torch.tensor([[ 70, 105, 114, 115, 116,  32,  67, 105, 116, 105, 122, 101, 110,  58,
-          10,  87, 101,  32,  97, 114, 101,  32,  97,  99,  99, 111, 117, 110,
-         116, 101, 100,  32]],device=device)
-    logits = torch.squeeze(model(t_preds),dim=0)
-    #print(logits)
-    logits_sm = torch.softmax(logits,dim=-1)
-    #print(logits_sm)
-    logits_argmax = torch.argmax(logits_sm,dim=1)
-    #print(logits_argmax)
-    lista_txt = torch.squeeze(logits_argmax).tolist()
-    #print(lista_txt)
-    print(utils.decode(lista_txt))
+    train.fit(model,device,dataloader_train,dataloader_eval,opt,loss_fn,epochs,early_stopping=100,scheduler=None,warmup=False)
+
+preds = "First Citizen:\n\
+We are accounted poor citizens, the patricians good.\n\
+What authority surfeits on would relieve us: if they\n\
+would yield us but the superfluity, while it were\n\
+wholesome, we might guess they relieved us humanely;\n\
+but they think we are too dear: "
      
+utils.gen_text(model,preds,200,device=device)
      # We are accounted poor citizens, the patricians good.
      # What authority surfeits on would relieve us: 
+
 
 

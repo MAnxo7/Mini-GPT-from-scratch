@@ -89,13 +89,10 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
     model.train()
     train_loss,train_acc,n_samples = 0.0,0.0,0
     for xn,yn in loader:
-        #cont+= xn.numel() #278848
-        #print(cont)
-        #print(xn,yn)
-        #print(utils.decode(xn.squeeze().tolist()))
         xn, yn = xn.to(device), yn.to(device)  
-        #print(yn.squeeze(dim=0).tolist()[0])
-        #print("\"",utils.decode(xn.squeeze(dim=0).tolist()[0]),"\"")
+        #print("XN = \"",utils.decode(xn.squeeze(dim=0).tolist()[0]),"\"")
+        #print("YN = \"",utils.decode(yn.squeeze(dim=0).tolist()[0]),"\"")
+        #break
         optimizer.zero_grad()
         logits = model(xn)
         # Reshaping 
@@ -116,7 +113,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
     return {"train_loss":train_loss/n_samples,"train_acc":train_acc/n_samples}
         
         
-def evaluate(model,loader, loss_fn, device):
+def evaluate(model,loader , loss_fn, device):
     model.eval()
     eval_loss,eval_acc,n_samples = 0.0,0.0,0
     with torch.no_grad():
