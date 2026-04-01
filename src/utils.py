@@ -86,3 +86,4 @@ def gen_text(model : torch.nn.Module , text_start : str , nletters : int , devic
         byte_text = encode(text_result[len(text_result)-window:])
     
     print(text_result)
+

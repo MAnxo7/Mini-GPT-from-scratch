@@ -22,20 +22,15 @@ batch = args.batch_size
 lr = args.lr
 device = args.device
 
-# WARMUP SET (This avoid division by 0 if the epochs are too low)
-if(epochs * 0.05 >= 1):
-    warmup = True
-else:
-    warmup = False
-
 # DATALOADERS CREATION
-window = 256
+window = 128
+stride = 8
 numworkers = 10
 persistent_workers = True
 pin_memory = True
-file = "./tiny_shakespare_little.txt"
+file = "./tiny_shakespare.txt"
 
-dataset_train, dataset_eval = data.generate_data(window,file=file)
+dataset_train, dataset_eval = data.generate_data(window,file=file,stride=stride)
 print(dataset_train)
 dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
 dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=10,persistent_workers=True,pin_memory=True)
@@ -43,12 +38,23 @@ dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers
 
 model = models.mini_GPT(device,dropout=0.1)
 
-weight_decay = 0
+weight_decay = 0.1
 opt = torch.optim.AdamW(params=model.parameters(),lr=lr,weight_decay=weight_decay)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=epochs*0.95+1) #0.95 for the warmup
 loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
- #TRAIN OR EVAL
+## WARMUP AND SCHEDULER
+total_steps = (int)((len(dataset_train)/batch)*epochs)
+
+warmup = True
+warmup_steps = (int)(0.05*total_steps) # The number of warmup_steps is the 5% of total steps
+warmuper = train.warmup(opt,lr,warmup_steps) if warmup else None
+
+scheduler = True
+scheduler_steps = total_steps-warmup_steps+1
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=scheduler_steps) if scheduler else None
+
+
+#TRAIN OR EVAL
 if args.eval_only:
     if args.ckpt_path is None:
         raise ValueError("You should specific --ckpt-path when use --eval-only")
@@ -57,7 +63,7 @@ if args.eval_only:
     print(f"Eval - Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}")
     
 else:
-    train.fit(model,device,dataloader_train,dataloader_eval,opt,loss_fn,epochs,early_stopping=100,scheduler=None,warmup=False)
+    train.fit(model,device,dataloader_train,dataloader_eval,opt,loss_fn,epochs,early_stopping=100,scheduler=scheduler,warmuper=warmuper)
 
 preds = "First Citizen:\n\
 We are accounted poor citizens, the patricians good.\n\

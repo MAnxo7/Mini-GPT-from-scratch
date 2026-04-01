@@ -2,15 +2,34 @@ import torch
 import os,csv,datetime, time
 from . import utils,viz
 #CSV: epoch, split, loss, acc, lr, time.
-def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, scheduler=None, warmup=True, early_stopping=None, run_dir=os.path.join(".","runs")):
+class warmup():
+    def __init__(self,opt,lr_target,warmup_steps):
+        self.lr_target = lr_target
+        self.warmup_steps = warmup_steps
+        self.opt = opt
+        self.act_steps = 0
+    
+    def is_finished(self):
+        return self.act_steps >= self.warmup_steps
+    
+    def step(self):
+        if(self.is_finished()):
+            raise RuntimeError("Step try after the warmup is finished")
+        self.opt.param_groups[0]['lr'] = self.lr_target * ((self.act_steps+1) / self.warmup_steps)
+        self.act_steps+=1
+        
+    
+
+def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, scheduler = None, warmuper = None, early_stopping=None, run_dir=os.path.join(".","runs")):
     if epochs <= 0:
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epochs or using --eval-only")
     print(device)
     act_epoch,last_improve = 0,0
     pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
-    warmup_steps = (int)(0.05*epochs) if warmup else 0 # The number of warmup_steps is the 5% of total steps
-    lr_target = optimizer.param_groups[0]['lr'] # Original learning rate, this is the learning rate which is used after the warmup
+    ## WARMUP CREATION
+
+
     run_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     thisrun_path = os.path.join(run_dir,run_date)
     os.makedirs(thisrun_path,exist_ok=True)
@@ -26,15 +45,11 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
         writer.writerow(["epoch","split","loss","acc","lr","duration_s"])
     while(act_epoch < epochs and last_improve < vpatience):
         print("epoch nº",act_epoch)
-        #WARMUP
-        if warmup:    
-            optimizer.param_groups[0]['lr'] = lr_target * ((act_epoch+1) / warmup_steps)
-        if warmup and act_epoch+1 >= warmup_steps:
-            warmup = False
+
         #print("lr",optimizer.param_groups[0]['lr'])
         #TRAIN
         t0 = time.time()
-        train_metrics = train_one_epoch(model,train_loader,optimizer,loss_fn,device)
+        train_metrics = train_one_epoch(model,train_loader,optimizer,loss_fn,device,scheduler=scheduler, warmuper=warmuper)
         train_time = time.time() - t0
         #EVALUATE 
         t0 = time.time()
@@ -43,11 +58,7 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
         #SAVE EPOCH TIME
         epoch_time_list.append(train_time+eval_time)
         #WARMUP AND SCHEDULER 
-        if not warmup and scheduler is not None:
-            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                scheduler.step(eval_metrics["eval_loss"])
-            else:
-                scheduler.step()
+
         # IS THE BEST?
         if (best_eval_loss > eval_metrics["eval_loss"]):
             best_eval_loss = eval_metrics["eval_loss"]
@@ -85,14 +96,14 @@ def fit(model, device, train_loader, val_loader, optimizer, loss_fn, epochs, sch
     print(f"Average epoch time: {avg_epoch_time:.4f}")
                 
         
-def train_one_epoch(model, loader, optimizer, loss_fn, device): 
+def train_one_epoch(model, loader, optimizer,  loss_fn, device, scheduler = None, warmuper : warmup = None): 
     model.train()
     train_loss,train_acc,n_samples = 0.0,0.0,0
+    step = 0
     for xn,yn in loader:
         xn, yn = xn.to(device), yn.to(device)  
-        #print("XN = \"",utils.decode(xn.squeeze(dim=0).tolist()[0]),"\"")
-        #print("YN = \"",utils.decode(yn.squeeze(dim=0).tolist()[0]),"\"")
-        #break
+        
+
         optimizer.zero_grad()
         logits = model(xn)
         # Reshaping 
@@ -103,13 +114,29 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         loss.backward()
         #for name,param in model.named_parameters():
         #   print(name,param.grad.norm())
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5) # Gradient Clipping
-        optimizer.step()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1) # Gradient Clipping
+        
+
+        # OPTIMIZER, SCHEDULER AND WARMUP
+        if warmuper is not None and not warmuper.is_finished():    
+            warmuper.step()
+            optimizer.step()
+        elif scheduler is not None:
+            optimizer.step()
+            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                raise AttributeError("ReduceLROnPlateau scheduler isn't compatible with this model.")
+            else:
+                scheduler.step()
+        else:
+            optimizer.step()
+
         #Metrics
         samples = xn.size(0)
         train_loss += loss.item()*samples
         train_acc += utils.accuracy_from_logits(logits, yn)*samples
         n_samples+=samples
+        step+=1
+        if step%20 == 0: print((step/len(loader))*100,"%")
     return {"train_loss":train_loss/n_samples,"train_acc":train_acc/n_samples}
         
         
@@ -131,3 +158,5 @@ def evaluate(model,loader , loss_fn, device):
             eval_acc += utils.accuracy_from_logits(logits, yn)*samples
             n_samples+=samples
     return {"eval_loss":eval_loss/n_samples,"eval_acc":eval_acc/n_samples}
+
+
