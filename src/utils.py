@@ -32,13 +32,14 @@ def accuracy_from_logits(logits, y_true):
     nelems = torch.numel(preds)
     return correct/nelems
 
-def save_checkpoint(model, optimizer, epoch, path, extra: dict | None = None):
+def save_checkpoint(model, optimizer, epoch_step, path, steps_mode: bool = False, extra: dict | None = None):
     import os
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
         "model": model.state_dict(),
         "optimizer": optimizer.state_dict() if optimizer is not None else None,
-        "epoch": int(epoch),
+        "epoch_step": int(epoch_step),
+        "steps_mode": bool(steps_mode),
         "extra": extra or {},
     }
     torch.save(payload, path)
