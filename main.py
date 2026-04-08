@@ -45,15 +45,15 @@ opt = torch.optim.AdamW(params=model.parameters(),lr=lr,weight_decay=weight_deca
 loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
 ## WARMUP AND SCHEDULER
-#total_steps = (int)((len(dataset_train)/batch)*epochs)
-total_steps = epochs
+if ((len(dataset_train)/batch) == dataloader_train) print("ES VERDAD")
+planned_steps = min(max_steps,((len(dataset_train)/batch)*epochs))
 
 warmup = True
-warmup_steps = (int)(0.05*total_steps) # The number of warmup_steps is the 5% of total steps
+warmup_steps = (int)(0.05*planned_steps) # The number of warmup_steps is the 5% of total steps
 warmuper = train.warmup(opt,lr,warmup_steps) if warmup else None
 
 scheduler = True
-scheduler_steps = total_steps-warmup_steps+1
+scheduler_steps = planned_steps-warmup_steps+1
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt,T_max=scheduler_steps) if scheduler else None
 
 
