@@ -172,15 +172,13 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epoch or using --eval-only")
     if max_steps and max_steps <= 0:
         raise ValueError("Max_steps can't be 0 or negative. Try increasing --steps or using --eval-only")
-    print(device)
-
-    N_STEPS = 20
+    N_STEPS = 150
     STEP_MODE = True # This makes the x-axis of the accuracy and loss graphics created by matplot be in range of N_STEPS instead of range of epochs
     act_step,act_epoch,last_improve= 0,0,0
     train_time = 0
     pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
-
+    max_steps = max_steps if max_steps is not None else float("inf") 
     run_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     thisrun_path = os.path.join(run_dir,run_date)
     os.makedirs(thisrun_path,exist_ok=True)
@@ -196,7 +194,7 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
         writer = csv.writer(f, delimiter=",")
         writer.writerow(["step","split","loss","acc","lr","duration_s"])
     # TRAIN
-    while(act_epoch < epochs and (not max_steps or act_step < max_steps) and last_improve < vpatience):
+    while(act_epoch < epochs and act_step < max_steps and last_improve < vpatience):
 
         print("#### epoch nº ", act_epoch, " ####")
         #TRAIN
@@ -239,7 +237,7 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
                     last_improve=0
                 pre_eval_loss = eval_metrics["eval_loss"] 
                 utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,extra=scheduler)
-                if(act_step >= max_steps):
+                if(max_steps and act_step >= max_steps):
                     break
             act_step+=1
         act_epoch+=1           

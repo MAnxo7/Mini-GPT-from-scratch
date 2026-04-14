@@ -63,7 +63,7 @@ def decode(list_bytes:list) -> str:
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
 
 
-def gen_text(model : torch.nn.Module , text_start : str , nletters : int , device : torch.device = get_device()):
+def gen_text(model : torch.nn.Module , text_start : str , ntokens : int ,temperature : float, top_k : float, top_p : float, device : torch.device = get_device()):
 
     model.eval()
 
@@ -71,15 +71,21 @@ def gen_text(model : torch.nn.Module , text_start : str , nletters : int , devic
     byte_text = encode(text_start)
     window = len(text_start)
 
-    for _ in range(0,nletters):
+    for _ in range(0,ntokens):
         t_text_start = torch.tensor([byte_text],device=device)
-        logits = torch.squeeze(model(t_text_start),dim=0)
+        # [126,255]
+        pretemperature_logits = torch.squeeze(model(t_text_start),dim=0)
         #print(logits)
-        logits_sm = torch.softmax(logits,dim=-1)
+        logits = torch.div(pretemperature_logits,temperature)
+
+        k_logits = __apply_top_k(logits,top_k)
+        p_logits = __apply_top_p(k_logits, top_p, device)
+
+        logits_sm = torch.softmax(p_logits,dim=-1)
         #print(logits_sm)
-        logits_argmax = torch.argmax(logits_sm,dim=1)
+        logits_sampled = torch.multinomial(logits_sm,1)
         #print(logits_argmax)
-        logits_bytes_txt = torch.squeeze(logits_argmax).tolist()
+        logits_bytes_txt = torch.squeeze(logits_sampled).tolist()
         #print(lista_txt)
         #print("TEXT:",decode(logits_bytes_txt))
         text_result = text_result + decode([logits_bytes_txt[-1]])
@@ -88,3 +94,38 @@ def gen_text(model : torch.nn.Module , text_start : str , nletters : int , devic
     
     print(text_result)
 
+def __apply_top_k(logits : torch.Tensor, k : int):
+    if k is None or k <= 0 or k >= logits.numel():
+        return logits
+    
+    topk_vals, _= torch.topk(logits, k)
+
+    threshold = topk_vals[:,-1] 
+    threshold = threshold.reshape(-1,1)
+    threshold = threshold.expand((-1,logits.shape[-1]))
+
+    masked = logits.clone()
+    masked[masked < threshold] = float("-inf")
+    return masked
+
+def __apply_top_p(logits : torch.Tensor, p : float, device : torch.device = get_device()): # Revisar
+    if p is None or p <= 0 or p >= 1:
+        return logits
+
+    probs = torch.softmax(logits, dim=-1) 
+
+    sorted_probs, sorted_idx = torch.sort(probs, descending=True, dim=-1)
+    cum_probs = torch.cumsum(sorted_probs, dim=-1)
+
+    remove = cum_probs > p
+    remove[:,0] = False
+
+    masked = logits.clone()
+
+    remove_vocab_mask = torch.zeros([masked.shape[0],masked.shape[1]], dtype=torch.bool, device=device)
+    # Writes in the mask the values of the "remove" in the given index ubications
+    # [2,0,3,1] and [false, false, true, true] => [true,false,true,false]
+    remove_vocab_mask.scatter_(dim=1, index=sorted_idx, src=remove) 
+
+    masked_logits = masked.masked_fill_(remove_vocab_mask,float('-inf'))
+    return masked_logits
