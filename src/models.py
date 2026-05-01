@@ -1,48 +1,30 @@
 import torch
 
-class BasicNN(torch.nn.Module):
-    def __init__(self,neurons,in_features,out_features,device):
-        super().__init__()
-        H = neurons
-        input = in_features
-        output = out_features
-        self.capa1 = torch.nn.Linear(input,H).to(device)
-        self.capa2 = torch.nn.Linear(H,output).to(device)
-        self.capas = [self.capa1,self.capa2]
-        self.activation = torch.nn.LeakyReLU(negative_slope=0.1).to(device)
-                   
-    def forward(self,x): 
-        input = self.activation(self.capas[0](x))
-        # Calculate and activate all the layers until the n-1 layer
-        for i in range(1,len(self.capas)-1):
-            input = self.activation(self.capas[i](input))
-        # Returns the last layer without activation
-        return self.capas[len(self.capas)-1](input)
-
 class mini_GPT(torch.nn.Module):
     def __init__(self, device, dropout = 0.1):
         super().__init__()
-        VOCAB = 256
-        d_model = 256
-        context_L = 256
+        
+        self.VOCAB = 256
+        self.d_model = 256
+        self.context_L = 256
         self.n_heads = 8
-        n_layers = 6
-        d_ff = 4*d_model  #(MLP interno)
-        dropout = dropout
+        self.n_layers = 6
+        self.d_ff = 4*self.d_model  #(MLP interno)
+        self.dropout = dropout
 
-        self.embeds_layer = torch.nn.Embedding(VOCAB,d_model,dtype = torch.float).to(device)
-        self.pos_embeds_layer = torch.nn.Embedding(context_L,d_model,dtype = torch.float).to(device)
+        self.embeds_layer = torch.nn.Embedding(self.VOCAB,self.d_model,dtype = torch.float).to(device)
+        self.pos_embeds_layer = torch.nn.Embedding(self.context_L,self.d_model,dtype = torch.float).to(device)
         
         # I use encoder in Pytorch because Pytorch doen't have a decoder_only layer. The torch.nn.TransformerDecoderLayer is equivalent to Encoder-Decoder instead
         # decoder only.
-        decoder_layer = torch.nn.TransformerEncoderLayer(d_model,self.n_heads,d_ff,dropout,batch_first=True).to(device) 
-        self.decoder = torch.nn.TransformerEncoder(decoder_layer,n_layers).to(device)
+        decoder_layer = torch.nn.TransformerEncoderLayer(self.d_model,self.n_heads,self.d_ff,dropout,batch_first=True).to(device) 
+        self.decoder = torch.nn.TransformerEncoder(decoder_layer,self.n_layers).to(device)
 
         for p in self.decoder.parameters():
             if p.dim() > 1:
                 torch.nn.init.xavier_uniform_(p)
 
-        self.linear_layer = torch.nn.Linear(in_features=d_model,out_features=VOCAB).to(device)
+        self.linear_layer = torch.nn.Linear(in_features=self.d_model,out_features=self.VOCAB).to(device)
     
     def forward(self, X : torch.Tensor):
 
