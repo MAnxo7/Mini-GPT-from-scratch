@@ -1,4 +1,5 @@
 import torch
+from typing import Any
 
 def set_seed(seed: int, deterministic: bool = False):
     import os, random, numpy as np
@@ -32,11 +33,13 @@ def accuracy_from_logits(logits, y_true):
     nelems = torch.numel(preds)
     return correct/nelems
 
-def save_checkpoint(model, optimizer, epoch_step, path, steps_mode: bool = False, extra: dict | None = None):
+def save_checkpoint(model : torch.nn.Module, optimizer : torch.optim.Optimizer, epoch_step : int, path : str, steps_mode: bool = False, extra: dict | None = None):
     import os
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
         "model": model.state_dict(),
+        "model_type": model.__class__.__name__,
+        "model_config": model.get_config(),
         "optimizer": optimizer.state_dict() if optimizer is not None else None,
         "epoch_step": int(epoch_step),
         "steps_mode": bool(steps_mode),
@@ -44,14 +47,41 @@ def save_checkpoint(model, optimizer, epoch_step, path, steps_mode: bool = False
     }
     torch.save(payload, path)
     
-def load_checkpoint(path, model=None, optimizer=None, map_location="cpu"):
-    print(path)
+def load_checkpoint(path : str, map_location: str="cpu") -> tuple[dict[str, Any], torch.nn.Module]:
+    from src import models
+
+    print("Loading checkpoint from:", path)
+
     ckpt = torch.load(path, map_location=map_location, weights_only=False)
-    if model is not None:
-        model.load_state_dict(ckpt["model"])
-    if optimizer is not None and ckpt.get("optimizer") is not None:
-        optimizer.load_state_dict(ckpt["optimizer"])
-    return ckpt
+
+    # Checkpoint validation
+    if "model_type" not in ckpt or ckpt["model_type"] is None:
+        raise ValueError("Checkpoint has no 'model_type' or 'model_type' is None. Cannot reconstruct model automatically.")
+
+    if "model_config" not in ckpt or ckpt["model_config"] is None:
+        raise ValueError("Checkpoint has no 'model_config' or 'model_config' is None. Cannot reconstruct model automatically.")
+
+    if "model" not in ckpt or ckpt["model"] is None:
+        raise ValueError("Checkpoint has no 'model' state_dict or 'model' is None.")
+
+    model_type = ckpt["model_type"]
+    model_config = ckpt["model_config"]
+    print(model_config)
+    # Does the model exists?
+    try:
+        model_cls = getattr(models, model_type)
+    except AttributeError as e:
+        raise AttributeError(f"There is no model class named '{model_type}' in models.py.") from e
+
+    # Are the model attributes correct?
+    try:
+        model = model_cls(**model_config)
+    except TypeError as e:
+        raise TypeError(f"The stored config for '{model_type}' does not match its constructor.") from e
+
+    model.load_state_dict(ckpt["model"], strict=True)
+
+    return ckpt, model
 
 
 def encode(text:str) -> list:
@@ -63,42 +93,108 @@ def decode(list_bytes:list) -> str:
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
 
 
-def gen_text(model : torch.nn.Module , text_start : str , window : int, ntokens : int ,temperature : float = None, top_k : int  = None, top_p : float = None, device : torch.device = get_device(), preset : str = None):
+def gen_text(model : torch.nn.Module,
+            text_start : str,
+            window : int,
+            ntokens : int,
+            temperature : float = None, 
+            top_k : int  = None, 
+            top_p : float = None, 
+            device : torch.device = get_device(), 
+            preset : str = None):
+    """
+    Generate text autoregressively from an initial prompt.
 
+    The function encodes the initial text into byte-level token IDs and then
+    generates new tokens one by one. At each generation step, the model receives
+    the current context, produces logits for all positions, and only the logits
+    from the last position are used to sample the next byte token.
+
+    Decoding can be controlled with temperature, top-k, top-p, or one of the
+    predefined presets.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Trained language model used for generation. The model is expected to
+        return logits with shape [batch_size, sequence_length, vocab_size].
+
+    text_start : str
+        Initial prompt used as the starting context for generation.
+
+    window : int
+        Maximum context length kept during generation. In this byte-level
+        ASCII-oriented setup, this corresponds to the recent context passed
+        back into the model at each step.
+
+    ntokens : int
+        Number of new tokens to generate.
+
+    temperature : float or None, default=None
+        Value used to scale the logits before sampling. Lower values make the
+        generation more deterministic; higher values make it more random.
+        If None, the selected preset provides the value.
+
+    top_k : int or None, default=None
+        If provided, only the top-k most likely tokens are kept before sampling.
+
+    top_p : float or None, default=None
+        If provided, nucleus sampling is applied: only the smallest group of
+        tokens whose cumulative probability exceeds top_p is kept.
+
+    device : torch.device, default=get_device()
+        Device where the input tensor is created and where the model is expected
+        to run.
+
+    preset : str or None, default=None
+        Generation preset. Supported values are:
+        - "default"
+        - "short_stable"
+        - "creative"
+        - "debug_greedy"
+
+        In "debug_greedy" mode, the function uses argmax instead of sampling.
+
+    Returns
+    -------
+    str
+        The initial prompt plus the generated continuation.
+    """
     model.eval()
 
     text_result : str = text_start
     byte_text = encode(text_start)
 
-    for _ in range(0,ntokens):
-        t_text_start = torch.tensor([byte_text],device=device)
-        pretemperature_logits = model(t_text_start)[0,-1,:]
-        if (preset == "default"):
-            if top_p is None: top_p = 0.95 
-            if temperature is None: temperature = 0.92           
-        elif (preset == "short_stable"):
-            if top_p is None: top_p = 0.9
-            if temperature is None: temperature = 0.9
-        elif (preset == "creative"):
-            if top_p is None: top_p = 0.95
-            if temperature is None: temperature = 1.1
-        else: #debug_greedy
-            if temperature is None: temperature = 1
+    with torch.no_grad():
+        for _ in range(0,ntokens):
+            t_text_start = torch.tensor([byte_text],device=device)
+            pretemperature_logits = model(t_text_start)[0,-1,:]
+            if (preset == "default"):
+                if top_p is None: top_p = 0.95 
+                if temperature is None: temperature = 0.92           
+            elif (preset == "short_stable"):
+                if top_p is None: top_p = 0.9
+                if temperature is None: temperature = 0.9
+            elif (preset == "creative"):
+                if top_p is None: top_p = 0.95
+                if temperature is None: temperature = 1.1
+            else: #debug_greedy
+                if temperature is None: temperature = 1
 
-        logits = torch.div(pretemperature_logits,temperature)
-        if top_k: logits = __apply_top_k(logits,top_k)
-        if top_p: logits = __apply_top_p(logits, top_p)
+            logits = torch.div(pretemperature_logits,temperature)
+            if top_k: logits = __apply_top_k(logits,top_k)
+            if top_p: logits = __apply_top_p(logits, top_p)
 
-        logits_sm = torch.softmax(logits,dim=-1)
+            logits_sm = torch.softmax(logits,dim=-1)
 
-        if preset == "debug_greedy":
-            logits_sampled = torch.argmax(logits_sm,dim=-1)
-        else:
-            logits_sampled = torch.multinomial(logits_sm,1)
+            if preset == "debug_greedy":
+                logits_sampled = torch.argmax(logits_sm,dim=-1)
+            else:
+                logits_sampled = torch.multinomial(logits_sm,1)
 
-        logits_byte_txt = logits_sampled.tolist()
-        text_result = text_result + decode(logits_byte_txt)
-        byte_text = encode(text_result[max(0,len(text_result)-window):])
+            logits_byte_txt = logits_sampled.tolist()
+            text_result = text_result + decode(logits_byte_txt)
+            byte_text = encode(text_result[-window:])
     
     return text_result
 
@@ -133,7 +229,18 @@ def __apply_top_p(logits : torch.Tensor, p : float): # Revisar
     return masked
 
 
-def create_run_features(model : torch.nn.Module,run_date : str ,lr : float, batch_size : int, wd : float, path: str):
+def create_run_features(model : torch.nn.Module, path: str, run_date : str = None ,lr : float = None , batch_size : int = None , wd : float = None):
+    """Generates a features.file in the given path
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        The model that yo want to save its features.
+    path : str
+        The wished path for the file creation.
+    run_date,lr,batch_size,wd : str,float,int,float
+        The possible extra features to record.
+    """
     model_dic = vars(model)
     with open(path, 'a') as featuresfile:
         featuresfile.write("## ---- MODEL ----\n")
@@ -145,7 +252,7 @@ def create_run_features(model : torch.nn.Module,run_date : str ,lr : float, batc
                 txt = str(key) + ": " + str(value) + "\n" 
                 featuresfile.write(txt)
         featuresfile.write("## ---- TRAINING ----\n")    
-        featuresfile.write("date: " +  run_date + "\n")
+        featuresfile.write("date: " +  str(run_date) + "\n")
         featuresfile.write("lr: " +  str(lr) + "\n")
         featuresfile.write("batch_size: " +  str(batch_size) + "\n")
         featuresfile.write("weight_decay: " +  str(wd) + "\n")

@@ -55,12 +55,10 @@ def generate_data(window : int, stride : int = 1, file : str = "./tiny_shakespar
         Y_data_eval  = data_eval[1:].unfold(-1,window,stride)
         eval_dataset = TensorDataset(X_data_eval,Y_data_eval)
 
-    print(X_data_train.shape)
+    print(f"Train_data shape: {X_data_train.shape}")
     return train_dataset , eval_dataset
 
 
-#def __empty_lines(lines):
-#    return [i for i, line in enumerate(lines) if line.strip() == ""]
 
 
 

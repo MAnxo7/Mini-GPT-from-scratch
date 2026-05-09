@@ -20,16 +20,102 @@ class warmup():
         
 # -------------------------- TRAIN WITH STEPS -----------------------------------------
 
+def fit(
+    model: torch.nn.Module,
+    device: torch.device,
+    train_loader: torch.utils.data.DataLoader,
+    val_loader: torch.utils.data.DataLoader,
+    optimizer: torch.optim.Optimizer,
+    loss_fn: torch.nn.Module,
+    epochs: int,
+    max_steps: int | None = None,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
+    warmuper: warmup | None = None,
+    early_stopping: int | None = None,
+    run_dir: str = os.path.join(".", "runs"),
+    ) -> None:
+    """
+    Train a model using a step-based training loop.
 
-def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epochs ,max_steps = None, scheduler = None, warmuper = None, early_stopping=None, run_dir=os.path.join(".","runs")):
+    This function trains the model using the provided training and validation
+    dataloaders. It periodically evaluates the model, logs metrics to CSV, saves
+    checkpoints, and generates loss/accuracy plots at the end of training.
+
+    Training stops when one of the following conditions is met:
+    - the maximum number of epochs is reached;
+    - the maximum number of steps is reached;
+    - early stopping patience is exceeded.
+
+    Metrics are logged every fixed number of steps (N_STEPS). The reported training metrics
+    are averaged over the steps since the previous evaluation point.
+
+    Parameters
+    ----------
+    model : torch.nn.Module
+        Model to train.
+
+    device : torch.device
+        Device where input batches are moved before the forward pass.
+
+    train_loader : torch.utils.data.DataLoader
+        Dataloader used for training batches.
+
+    val_loader : torch.utils.data.DataLoader
+        Dataloader used for validation/evaluation.
+
+    optimizer : torch.optim.Optimizer
+        Optimizer used to update the model parameters.
+
+    loss_fn : torch.nn.Module
+        Loss function used to compare model logits against target tokens.
+
+    epochs : int
+        Maximum number of epochs to train.
+
+    max_steps : int or None, default=None
+        Maximum number of optimizer steps. If None, training is only limited by
+        the number of epochs.
+
+    scheduler : torch.optim.lr_scheduler.LRScheduler or None, default=None
+        Learning-rate scheduler stepped after each optimizer update, once warmup
+        has finished.
+
+    warmuper : warmup or None, default=None
+        Optional warmup object used to increase the learning rate during the first
+        training steps.
+
+    early_stopping : int or None, default=None
+        Number of consecutive evaluations without validation loss improvement
+        before stopping training. If None, early stopping is disabled.
+
+    run_dir : str, default="./runs"
+        Directory where the run folder, metrics, checkpoints and plots are saved.
+
+    Returns
+    -------
+    None
+        The function trains the model in-place and saves artifacts to disk.
+
+    Artifacts
+    ---------
+    Each run creates a timestamped directory containing:
+    - metrics.csv
+    - features.md
+    - best.pt
+    - last.pt
+    - figures/loss.jpg
+    - figures/acc.jpg
+    """
     if epochs <= 0:
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epoch or using --eval-only")
     if max_steps and max_steps <= 0:
         raise ValueError("Max_steps can't be 0 or negative. Try increasing --steps or using --eval-only")
-    N_STEPS = 500 # Each N_STEPS the model is evaluated and the metrics saved
+    N_STEPS = 100 # Each N_STEPS the model is evaluated and the metrics saved
     STEP_MODE = True # This makes the x-axis of the accuracy and loss graphics created by matplot be in range of N_STEPS instead of range of epochs
     act_step,act_epoch,last_improve= 0,0,0
     train_time = 0
+    train_metrics = {"train_loss":0,"train_acc":0}
+    steps_pre_eval = 0
     pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
     max_steps = max_steps if max_steps is not None else float("inf") 
@@ -44,7 +130,7 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
     best_eval_loss, best_eval_acc, best_train_loss, best_train_acc = float("inf"), 0.0, float("inf"), 0.0
     epoch_time_list = []
     # Features 
-    utils.create_run_features(model,run_date,optimizer.param_groups[0]['lr'],train_loader.batch_size,optimizer.param_groups[0]['weight_decay'],features_path)
+    utils.create_run_features(model,features_path,run_date,optimizer.param_groups[0]['lr'],train_loader.batch_size,optimizer.param_groups[0]['weight_decay'])
     # CSV Head
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f, delimiter=",")
@@ -56,12 +142,17 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
         #TRAIN
         for xn,yn in train_loader:
             t0 = time.time()
-            train_metrics = train_one_step(model,xn,yn,optimizer,loss_fn,device,scheduler=scheduler, warmuper=warmuper)
+            train_metrics_act = train_one_step(model,xn,yn,optimizer,loss_fn,device,scheduler=scheduler, warmuper=warmuper)
+            train_metrics["train_loss"] += train_metrics_act["train_loss"]
+            train_metrics["train_acc"] += train_metrics_act["train_acc"]
+            steps_pre_eval+=1
             train_time += time.time() - t0
             #EVALUATE 
             if act_step == 0 or act_step%N_STEPS == 0 or act_step >= max_steps:
                 print("-- step nº",act_step," --")
                 t0 = time.time()
+                train_metrics["train_loss"] /= steps_pre_eval
+                train_metrics["train_acc"] /= steps_pre_eval
                 eval_metrics = evaluate(model,val_loader,loss_fn,device)
                 eval_time = time.time() - t0
                 #SAVE EPOCH TIME
@@ -85,6 +176,8 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
                     writer.writerow([act_step,"train",train_metrics["train_loss"],train_metrics["train_acc"],optimizer.param_groups[0]["lr"],train_time])
                     writer.writerow([act_step,"eval",eval_metrics["eval_loss"],eval_metrics["eval_acc"],optimizer.param_groups[0]["lr"],eval_time])
                 train_time = 0
+                train_metrics = {"train_loss": 0.0, "train_acc": 0.0}
+                steps_pre_eval = 0
                 #UPDATE LOOP
                 if pre_eval_loss is not None and eval_metrics["eval_loss"] >= pre_eval_loss:
                     last_improve+=1
@@ -98,7 +191,9 @@ def fit_steps(model, device, train_loader, val_loader, optimizer, loss_fn, epoch
             act_step+=1
         act_epoch+=1           
     if last_improve >= vpatience:
-        utils.load_checkpoint(best_ckpt_path,model,optimizer)
+        ckpt = torch.load(best_ckpt_path, map_location=device, weights_only=False)
+        model.load_state_dict(ckpt["model"], strict=True)
+
         
     viz.plot_from_csv(csv_path,step_mode=STEP_MODE)
     
