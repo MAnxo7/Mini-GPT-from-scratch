@@ -407,7 +407,6 @@ The generated text can imitate the style and structure of the training data, but
 
 ---
 
-```md
 ## License
 
 MIT License.
