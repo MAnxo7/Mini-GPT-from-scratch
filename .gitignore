@@ -3,8 +3,4 @@
 runs/
 __pycache__/
 venv/
-<<<<<<< HEAD
-tiny_shakespare_little
-=======
-*cache*
->>>>>>> a2cd151 (Documentacion casi lista, solo me falta mejorar considerablemente el read-me, capaz hay algun bug que se me escapa y arreglo antes de subir a github)
+
