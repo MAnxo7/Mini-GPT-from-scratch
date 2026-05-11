@@ -76,8 +76,6 @@ elif epochs is not None:
 else:
     raise ValueError("You must specify either --max-steps or --epochs")
 
-    
-
 warmup = True
 warmup_steps = (int)(0.05*planned_steps) # The number of warmup_steps is the 5% of total steps
 warmuper = train.warmup(opt,lr,warmup_steps) if warmup else None
