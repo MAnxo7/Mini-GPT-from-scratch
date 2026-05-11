@@ -6,7 +6,7 @@ def test():
 
     device = utils.get_device()
 
-    model = models.mini_GPT(device,dropout=0)
+    model = models.mini_GPT(dropout=0).to(device)
 
     texto1 = "a" + "bbbbbbbbbbbbbb"
     texto2 = "a" + "zzzzzzzzzzzzzz"

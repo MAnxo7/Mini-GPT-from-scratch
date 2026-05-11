@@ -5,7 +5,7 @@ from src import utils,models,train,data
 #ARGS 
 parser = argparse.ArgumentParser()
 # Training
-parser.add_argument("--epochs", type=int, default=200)
+parser.add_argument("--epochs", type=int, default=None)
 parser.add_argument("--max-steps", type=int, default=None)
 parser.add_argument("--batch-size", type=int, default=32)
 parser.add_argument("--lr", type=float, default=3e-4)
@@ -67,7 +67,16 @@ if ckpt_path is not None and ckpt["optimizer"] is not None: opt.load_state_dict(
 loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
 ## WARMUP AND SCHEDULER
-planned_steps = min(max_steps if max_steps else float("inf"),len(dataloader_train)*epochs)
+if max_steps is not None and epochs is not None:
+    planned_steps = min(max_steps,len(dataloader_train)*epochs)
+elif max_steps is not None:
+    planned_steps = max_steps
+elif epochs is not None:
+    planned_steps = len(dataloader_train) * epochs
+else:
+    raise ValueError("You must specify either --max-steps or --epochs")
+
+    
 
 warmup = True
 warmup_steps = (int)(0.05*planned_steps) # The number of warmup_steps is the 5% of total steps

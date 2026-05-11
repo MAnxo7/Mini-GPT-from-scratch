@@ -106,11 +106,13 @@ def fit(
     - figures/loss.jpg
     - figures/acc.jpg
     """
-    if epochs <= 0:
+    if epochs is None and max_steps is None:
+        raise ValueError("You must specify either --epochs or --max-steps")
+    if epochs and epochs <= 0:
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epoch or using --eval-only")
     if max_steps and max_steps <= 0:
         raise ValueError("Max_steps can't be 0 or negative. Try increasing --steps or using --eval-only")
-    N_STEPS = 100 # Each N_STEPS the model is evaluated and the metrics saved
+    N_STEPS = 200 # Each N_STEPS the model is evaluated and the metrics saved
     STEP_MODE = True # This makes the x-axis of the accuracy and loss graphics created by matplot be in range of N_STEPS instead of range of epochs
     act_step,act_epoch,last_improve= 0,0,0
     train_time = 0
@@ -119,6 +121,7 @@ def fit(
     pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
     max_steps = max_steps if max_steps is not None else float("inf") 
+    epochs = epochs if epochs is not None else float("inf")
     run_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     thisrun_path = os.path.join(run_dir,run_date)
     os.makedirs(thisrun_path,exist_ok=True)

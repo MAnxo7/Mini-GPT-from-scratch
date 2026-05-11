@@ -10,7 +10,6 @@ def test():
     utils.set_seed(0,deterministic=True)
 
     epochs = 15
-    batch = 1
     lr = 3e-4
     device = torch.device("cpu")
 
@@ -20,17 +19,14 @@ def test():
     dataset_train, _ = data.generate_data(window,file="./tiny_shakespare_little.txt",eval_thr=0)
 
     xn , yn = dataset_train[0]
-    print(xn,yn)
-    dataset_train = TensorDataset(xn.unsqueeze(0),xn.unsqueeze(0))
 
-    dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch)
-    model = models.mini_GPT(device=device,dropout=0)
+    model = models.mini_GPT(dropout=0).to(device)
 
     opt = torch.optim.Adam(params=model.parameters(),lr=lr)
     loss_fn = torch.nn.CrossEntropyLoss().to(device)
 
-    for i in range(0,epochs):
-        train.train_one_epoch(model,dataloader_train,opt,loss_fn,device)
+    for _ in range(0,epochs):
+        train.train_one_step(model,xn,yn,opt,loss_fn,device)
 
     tensor_test = torch.unsqueeze(xn,dim=0)
     logits = model(tensor_test)
@@ -41,6 +37,6 @@ def test():
     
     print("XN: ",utils.decode(xn),"PREDS: ",utils.decode(preds)) 
 
-    data = train.train_one_epoch(model, dataloader_train, opt, loss_fn, device)
+    data = train.train_one_step(model, xn, yn, opt, loss_fn, device)
     print(data)
     assert data["train_loss"] < 0.1 and data["train_acc"] > 0.95
