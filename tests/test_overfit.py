@@ -16,7 +16,7 @@ def test():
     # DATALOADERS CREATION
     window = 16
 
-    dataset_train, _ = data.generate_data(window,file="./tiny_shakespare_little.txt",eval_thr=0)
+    dataset_train, _ = data.generate_data(window,file="./tiny_shakespare.txt",eval_thr=0)
 
     xn , yn = dataset_train[0]
 
