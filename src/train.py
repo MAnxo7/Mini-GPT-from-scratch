@@ -112,7 +112,7 @@ def fit(
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epoch or using --eval-only")
     if max_steps and max_steps <= 0:
         raise ValueError("Max_steps can't be 0 or negative. Try increasing --steps or using --eval-only")
-    N_STEPS = 2 # Each N_STEPS the model is evaluated and the metrics saved
+    N_STEPS = 200 # Each N_STEPS the model is evaluated and the metrics saved
     STEP_MODE = True # This makes the x-axis of the accuracy and loss graphics created by matplot be in range of N_STEPS instead of range of epochs
     act_step,act_epoch,last_improve= 0,0,0
     train_time = 0
