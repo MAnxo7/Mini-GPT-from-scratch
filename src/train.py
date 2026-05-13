@@ -151,7 +151,7 @@ def fit(
             steps_pre_eval+=1
             train_time += time.time() - t0
             #EVALUATE 
-            if act_step == 0 or act_step%N_STEPS == 0 or act_step >= max_steps:
+            if act_step == 0 or act_step%N_STEPS == 0 or act_step >= max_steps - 1:
                 print("-- step nº",act_step," --")
                 t0 = time.time()
                 train_metrics["train_loss"] /= steps_pre_eval
@@ -189,7 +189,7 @@ def fit(
                     last_improve=0
                 pre_eval_loss = eval_metrics["eval_loss"] 
                 utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,extra=scheduler)
-                if(max_steps and act_step >= max_steps):
+                if((max_steps and act_step >= max_steps - 1) or last_improve > vpatience):
                     break
             act_step+=1
         act_epoch+=1           
