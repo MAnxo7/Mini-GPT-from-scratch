@@ -12,25 +12,32 @@ def decode(list_bytes:list) -> str:
 
 def create_bpe_tokenization(text:str) -> None: # De momento ns que devuelve
     import re
+    from collections import Counter
+
     init_vocab = [chr(i) for i in range(0,255)]
-    pieces = set(re.findall(r"([a-zA-Z']{2,}|[^a-zA-Z']{2,})",text)) # This takes 2+ length elements of puntuaction or words
+
+    pieces = re.findall(r"([a-zA-Z']{2,}|[^a-zA-Z']{2,})",text.casefold()) # This takes 2+ length elements of puntuaction or words
+    pieces_count = Counter(pieces)
+    del pieces
+
     tokens : list = []
     rules = {}
 
-    for p in pieces: # This splits the words and puntuaction strings in chars
+    for p in pieces_count.keys(): # This splits the words and puntuaction strings in chars
         tokens.append([p[i] for i in range(0,len(p))])
     #print(tokens)
 
-    for i in range(0,300): # 1000 new tokens for example
+    for i in range(0,1000): # 1000 new tokens for example
 
         pair_count = dict()
         for token_word in tokens:
+            token_word_freq = pieces_count.get(''.join(token_word))
             for i in range(0,len(token_word)-1):
                 key = (token_word[i],token_word[i+1])
                 value = pair_count.get(key)
-                pair_count[key] =  value + 1 if value is not None else 1
+                pair_count[key] =  value + token_word_freq if value is not None else token_word_freq
 
-        max_count_element = max(pair_count, key=lambda value : pair_count.get(value)) #Get the most repeated key in the dictionary
+        max_count_element = max(pair_count, key=lambda key : pair_count.get(key)) #Get the most repeated key in the dictionary
         #print(max_count_element, pair_count.get(max_count_element))
 
         rule_value = max_count_element[0] + max_count_element[1]
@@ -45,8 +52,17 @@ def create_bpe_tokenization(text:str) -> None: # De momento ns que devuelve
                 if value is not None:
                     token_word[i] = value
                     del token_word[i+1]
-                i+=1
+                else:
+                    i+=1
     new_vocab = ([token for token_word in tokens for token in token_word])
 
-    print(pair_count)
+
+    #for rule in rules:
+    #    print(str(rule) + ": " + rules.get(rule)) 
+    #sorted_list = sorted(pair_count,key=lambda key : pair_count.get(key)) # Testing
+    #for i in range(1,len(sorted_list)):
+    #   print(sorted_list[-i],":",pair_count.get(sorted_list[-i]))
+
+    print(set(init_vocab).union(new_vocab))
+
     return set(init_vocab).union(new_vocab)
