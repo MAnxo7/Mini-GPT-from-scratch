@@ -47,7 +47,7 @@ def decode(list_ids:list,id_to_token:dict) -> str:
 ### RECORDATORIO QUE ESTA DUPLICADO EN UTILS, CARA AL FINAL QUITARLO DE UTILS Y DEJARLO AQUI
 
 
-def create_bpe_tokenization(text:str) -> tuple[dict,dict,dict]: # token_to_id, id_to_token, rules
+def create_bpe_tokenization(text:str,new_tokens:int) -> tuple[dict,dict,dict]: # token_to_id, id_to_token, rules
     import re
     from collections import Counter
 
@@ -64,7 +64,7 @@ def create_bpe_tokenization(text:str) -> tuple[dict,dict,dict]: # token_to_id, i
         tokens.append([p[i] for i in range(0,len(p))])
     #print(tokens)
 
-    for i in range(0,1000): # 1000 new tokens for example
+    for i in range(0,new_tokens):
 
         pair_count = dict()
         for token_word in tokens:

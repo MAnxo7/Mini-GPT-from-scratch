@@ -1,7 +1,11 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
 from . import utils
-def generate_data(window : int, stride : int = 1, file : str = "./tiny_shakespare.txt", eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset]:
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+def generate_data(window : int, stride : int = 1, file : str = str(PROJECT_ROOT / "tiny_shakespare.txt"), eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset]:
     """Generates a dataset with the *.txt file given
 
     Parameters
@@ -20,6 +24,7 @@ def generate_data(window : int, stride : int = 1, file : str = "./tiny_shakespar
     A tuple composed of the train_dataset and eval_dataset, the size of de eval_dataset will be the eval_the porcent of the windows,
     and the size of the train_dataset will be the remaining windows.
     """
+
     if(eval_thr > 1 or eval_thr < 0):
         raise ValueError("Invalid threshold, the threshold must be a value between 0 and 1")
     
