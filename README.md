@@ -398,7 +398,11 @@ Possible future improvements:
 * Add cleaner/better configuration management (with data and training attributes management)
 
 ---
+## Notes
 
+- This project assumes that all commands are executed from the project root ( .../Mini-GPT$ )
+
+---
 ## Disclaimer
 
 This project is a learning implementation.
