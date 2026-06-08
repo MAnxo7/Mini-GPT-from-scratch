@@ -402,6 +402,7 @@ Possible future improvements:
 
 - This project assumes that all commands are executed from the project root ( .../Mini-GPT$ )
 
+---
 ## Disclaimer
 
 This project is a learning implementation.
