@@ -16,11 +16,11 @@ def test():
     
     model.eval()
 
-    tensor_test = torch.tensor(utils.encode(texto1)).to(device)
+    tensor_test = torch.tensor(utils.byte_encode(texto1)).to(device)
     tensor_test = torch.unsqueeze(tensor_test,dim=0)
     logits1 = model(tensor_test)
 
-    tensor_test = torch.tensor(utils.encode(texto2)).to(device)
+    tensor_test = torch.tensor(utils.byte_encode(texto2)).to(device)
     tensor_test = torch.unsqueeze(tensor_test,dim=0)
     logits2 = model(tensor_test)
 

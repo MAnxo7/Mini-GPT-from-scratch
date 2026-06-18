@@ -33,7 +33,7 @@ def accuracy_from_logits(logits, y_true):
     nelems = torch.numel(preds)
     return correct/nelems
 
-def save_checkpoint(model : torch.nn.Module, optimizer : torch.optim.Optimizer, epoch_step : int, path : str, steps_mode: bool = False, extra: dict | None = None):
+def save_checkpoint(model : torch.nn.Module, optimizer : torch.optim.Optimizer, epoch_step : int, path : str, steps_mode: bool = False, tokenization_file_name : str = None, extra: dict | None = None):
     import os
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
@@ -43,6 +43,7 @@ def save_checkpoint(model : torch.nn.Module, optimizer : torch.optim.Optimizer, 
         "optimizer": optimizer.state_dict() if optimizer is not None else None,
         "epoch_step": int(epoch_step),
         "steps_mode": bool(steps_mode),
+        "tokenization_file_name":tokenization_file_name,
         "extra": extra or {},
     }
     torch.save(payload, path)
@@ -84,11 +85,11 @@ def load_checkpoint(path : str, map_location: str="cpu") -> tuple[dict[str, Any]
     return ckpt, model
 
 
-def encode(text:str) -> list:
+def byte_encode(text:str) -> list:
    text = text.encode(encoding="utf-8",errors="replace")
    return list(text)
 
-def decode(list_bytes:list) -> str:
+def byte_decode(list_bytes:list) -> str:
     bytes_to_decode = bytes(list_bytes)
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
 
@@ -97,6 +98,7 @@ def gen_text(model : torch.nn.Module,
             text_start : str,
             window : int,
             ntokens : int,
+            tokenization_name : str = None,
             temperature : float = None, 
             top_k : int  = None, 
             top_p : float = None, 
@@ -160,14 +162,21 @@ def gen_text(model : torch.nn.Module,
     str
         The initial prompt plus the generated continuation.
     """
+    from . import tokenizer
+    
     model.eval()
 
     text_result : str = text_start
-    byte_text = encode(text_start)
+
+    if tokenization_name is not None:
+        token_to_id, id_to_token, rules = tokenizer.load_from_JSON(tokenization_name)
+        encoded_tokens_list = tokenizer.encode(text_start,token_to_id,rules)
+    else:    
+        encoded_tokens_list = byte_encode(text_start)
 
     with torch.no_grad():
         for _ in range(0,ntokens):
-            t_text_start = torch.tensor([byte_text],device=device)
+            t_text_start = torch.tensor([encoded_tokens_list],device=device)
             pretemperature_logits = model(t_text_start)[0,-1,:]
             if (preset == "default"):
                 if top_p is None: top_p = 0.95 
@@ -191,10 +200,15 @@ def gen_text(model : torch.nn.Module,
                 logits_sampled = torch.argmax(logits_sm,dim=-1)
             else:
                 logits_sampled = torch.multinomial(logits_sm,1)
+            
+            model_logits = logits_sampled.tolist()
 
-            logits_byte_txt = logits_sampled.tolist()
-            text_result = text_result + decode(logits_byte_txt)
-            byte_text = encode(text_result[-window:])
+            if tokenization_name is not None:
+                text_result = text_result + tokenizer.decode(model_logits,id_to_token)
+                encoded_tokens_list = tokenizer.encode(text_result[-window:],token_to_id,rules)
+            else:
+                text_result = text_result + byte_decode(model_logits)
+                encoded_tokens_list = byte_encode(text_result[-window:])
     
     return text_result
 

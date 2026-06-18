@@ -1,6 +1,9 @@
 import torch
 import os,csv,datetime, time
 from . import utils,viz
+from pathlib import Path 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 #CSV: epoch, split, loss, acc, lr, time.
 class warmup():
     def __init__(self,opt,lr_target,warmup_steps):
@@ -32,7 +35,8 @@ def fit(
     scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
     warmuper: warmup | None = None,
     early_stopping: int | None = None,
-    run_dir: str = os.path.join(".", "runs"),
+    run_dir: str | Path = os.path.join(PROJECT_ROOT, "runs"),
+    tokenization_file_name: str | None = None
     ) -> None:
     """
     Train a model using a step-based training loop.
@@ -112,7 +116,7 @@ def fit(
         raise ValueError("Epochs can't be 0 or negative. Try increasing --epoch or using --eval-only")
     if max_steps and max_steps <= 0:
         raise ValueError("Max_steps can't be 0 or negative. Try increasing --steps or using --eval-only")
-    N_STEPS = 200 # Each N_STEPS the model is evaluated and the metrics saved
+    N_STEPS = 500 # Each N_STEPS the model is evaluated and the metrics saved
     STEP_MODE = True # This makes the x-axis of the accuracy and loss graphics created by matplot be in range of N_STEPS instead of range of epochs
     act_step,act_epoch,last_improve= 0,0,0
     train_time = 0
@@ -185,10 +189,10 @@ def fit(
                 if pre_eval_loss is not None and eval_metrics["eval_loss"] >= pre_eval_loss:
                     last_improve+=1
                 else:
-                    utils.save_checkpoint(model,optimizer,act_step,best_ckpt_path,steps_mode=STEP_MODE,extra=scheduler)
+                    utils.save_checkpoint(model,optimizer,act_step,best_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
                     last_improve=0
                 pre_eval_loss = eval_metrics["eval_loss"] 
-                utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,extra=scheduler)
+                utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
                 if((max_steps and act_step >= max_steps - 1) or last_improve > vpatience):
                     act_step+=1
                     break

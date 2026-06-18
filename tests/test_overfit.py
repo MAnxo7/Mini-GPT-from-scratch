@@ -16,7 +16,7 @@ def test():
     # DATALOADERS CREATION
     window = 16
 
-    dataset_train, _ = data.generate_data(window,file="./tiny_shakespare.txt",eval_thr=0)
+    dataset_train, _ = data.generate_data(window,data_file="./tiny_shakespare.txt",eval_thr=0)
 
     xn , yn = dataset_train[0]
 
@@ -35,7 +35,7 @@ def test():
     logits_sm = torch.softmax(logits,dim=-1)
     preds = torch.argmax(logits_sm,dim=-1)
     
-    print("XN: ",utils.decode(xn),"PREDS: ",utils.decode(preds)) 
+    print("XN: ",utils.byte_decode(xn),"PREDS: ",utils.byte_decode(preds)) 
 
     data = train.train_one_step(model, xn, yn, opt, loss_fn, device)
     print(data)

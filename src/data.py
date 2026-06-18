@@ -1,21 +1,25 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
-from . import utils
+from . import tokenizer, utils
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-def generate_data(window : int, stride : int = 1, file : str = str(PROJECT_ROOT / "tiny_shakespare.txt"), eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset]:
+def generate_data(window : int, 
+                  stride : int = 1, 
+                  data_file : str | Path = str(PROJECT_ROOT / "tiny_shakespare.txt"), 
+                  tokenization_name : str = None,
+                  eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset,int]:
     """Generates a dataset with the *.txt file given
 
     Parameters
-    ----------
+    -----------
     window : int
         The window which is used to slice the text.
     stride : int
         The stride between each window
     file : str
-        The path of the text file.
+        The path of the text data_file.
     eval_thr : float
         The threshold of the eval part of the text.
 
@@ -28,8 +32,8 @@ def generate_data(window : int, stride : int = 1, file : str = str(PROJECT_ROOT 
     if(eval_thr > 1 or eval_thr < 0):
         raise ValueError("Invalid threshold, the threshold must be a value between 0 and 1")
     
-    print("file =", file, "type =", type(file), )
-    f = open(file)
+    print("data_file =", data_file)
+    f = open(data_file)
     txt = f.read()
 
     min_thr = min((1-eval_thr),eval_thr)
@@ -38,7 +42,12 @@ def generate_data(window : int, stride : int = 1, file : str = str(PROJECT_ROOT 
         print(len(txt))
         raise ValueError("Window too big for this text and threshold ")
 
-    data = utils.encode(txt)
+    if (tokenization_name is not None):
+        token_to_id, _, rules = tokenizer.load_from_JSON(tokenization_name)
+        print(f"Tokenization {tokenization_name} loaded correctly")
+        data = tokenizer.encode(txt,token_to_id,rules)
+    else:
+        data = utils.byte_encode(txt)
 
     cut = (int)(len(data)*(1-eval_thr))
 
@@ -61,7 +70,7 @@ def generate_data(window : int, stride : int = 1, file : str = str(PROJECT_ROOT 
         eval_dataset = TensorDataset(X_data_eval,Y_data_eval)
 
     print(f"Train_data shape: {X_data_train.shape}")
-    return train_dataset , eval_dataset
+    return train_dataset , eval_dataset, len(token_to_id)+1 if tokenization_name is not None else 256
 
 
 

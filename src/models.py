@@ -1,7 +1,7 @@
 import torch
 
 class mini_GPT(torch.nn.Module):
-    def __init__(self, dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
+    def __init__(self, vocab_size : int = 255,dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
         """
         Create a small decoder-only GPT-style Transformer model for byte-level
         language modeling.
@@ -39,7 +39,8 @@ class mini_GPT(torch.nn.Module):
         """
         super().__init__()
         
-        self.VOCAB = 256 # vocab_size must be 256 in byte-level tokenization
+        self.VOCAB = vocab_size
+
         self.d_model = d_model
         self.context_L = context_L
         self.n_heads = n_heads
@@ -48,6 +49,7 @@ class mini_GPT(torch.nn.Module):
         self.dropout = dropout
 
         self.model_config = {
+            "vocab_size": self.VOCAB,
             "d_model": self.d_model,
             "context_L": self.context_L,
             "n_heads": self.n_heads,
