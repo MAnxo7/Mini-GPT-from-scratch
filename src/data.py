@@ -38,16 +38,16 @@ def generate_data(window : int,
 
     min_thr = min((1-eval_thr),eval_thr)
 
-    if len(txt) < window or (min_thr > 0 and len(txt)*min_thr < window): 
-        print(len(txt))
-        raise ValueError("Window too big for this text and threshold ")
-
     if (tokenization_name is not None):
         token_to_id, _, rules = tokenizer.load_from_JSON(tokenization_name)
         print(f"Tokenization {tokenization_name} loaded correctly")
         data = tokenizer.encode(txt,token_to_id,rules)
     else:
         data = utils.byte_encode(txt)
+
+    if len(data) < window or (min_thr > 0 and len(data)*min_thr < window): 
+        print(len(txt))
+        raise ValueError("Window too big for this text and threshold ")
 
     cut = (int)(len(data)*(1-eval_thr))
 
@@ -70,7 +70,7 @@ def generate_data(window : int,
         eval_dataset = TensorDataset(X_data_eval,Y_data_eval)
 
     print(f"Train_data shape: {X_data_train.shape}")
-    return train_dataset , eval_dataset, len(token_to_id)+1 if tokenization_name is not None else 256
+    return train_dataset , eval_dataset, len(token_to_id)+1 if tokenization_name is not None else 257
 
 
 

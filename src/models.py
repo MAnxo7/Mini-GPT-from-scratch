@@ -1,7 +1,7 @@
 import torch
 
 class mini_GPT(torch.nn.Module):
-    def __init__(self, vocab_size : int = 255,dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
+    def __init__(self, vocab_size : int = 257,dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
         """
         Create a small decoder-only GPT-style Transformer model for byte-level
         language modeling.

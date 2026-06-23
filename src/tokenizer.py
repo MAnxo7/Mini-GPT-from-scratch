@@ -113,7 +113,7 @@ def create_bpe_tokenization(text:str,new_tokens:int) -> tuple[dict,dict,dict]: #
 
 def save_to_JSON(token_to_id : dict, id_to_token : dict, rules : dict, file_name : str = None, folder_path : str = None):
     import json
-    import datetime
+    import os, datetime
 
     current_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -122,8 +122,10 @@ def save_to_JSON(token_to_id : dict, id_to_token : dict, rules : dict, file_name
     else:
         name = file_name 
 
-    path : Path = Path(folder_path) / name if folder_path is not None else TOKENIZATIONS_FOLDER_PATH / name
+    if folder_path is None: os.makedirs(TOKENIZATIONS_FOLDER_PATH,exist_ok=True)
 
+    path : Path = Path(folder_path) / name if folder_path is not None else TOKENIZATIONS_FOLDER_PATH / name
+    
     json_dict = {}
     rules_list = []
     json_dict["name"] = name

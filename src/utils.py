@@ -85,12 +85,14 @@ def load_checkpoint(path : str, map_location: str="cpu") -> tuple[dict[str, Any]
     return ckpt, model
 
 
-def byte_encode(text:str) -> list:
-   text = text.encode(encoding="utf-8",errors="replace")
-   return list(text)
+def byte_encode(text:str) -> list: # I apply the byte + 1 logic because I want to reserve the number 0 for padding
+   encoded_text = text.encode(encoding="utf-8",errors="replace")
+   result = [byte + 1 for byte in encoded_text]
+   return result
 
-def byte_decode(list_bytes:list) -> str:
-    bytes_to_decode = bytes(list_bytes)
+def byte_decode(list_ids:list) -> str: # I apply the x - 1 logic because is encoded thinking on padding
+    list_to_decode = [x - 1 for x in list_ids]
+    bytes_to_decode = bytes(list_to_decode)
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
 
 
@@ -165,19 +167,22 @@ def gen_text(model : torch.nn.Module,
     from . import tokenizer
     
     model.eval()
-
-    text_result : str = text_start
-
+    
     if tokenization_name is not None:
         token_to_id, id_to_token, rules = tokenizer.load_from_JSON(tokenization_name)
-        encoded_tokens_list = tokenizer.encode(text_start,token_to_id,rules)
+        evaluated_tokens_list = tokenizer.encode(text_start,token_to_id,rules)
     else:    
-        encoded_tokens_list = byte_encode(text_start)
+        evaluated_tokens_list = byte_encode(text_start)
+
+    token_list_result : list = evaluated_tokens_list.copy()
+
+    evaluated_tokens_list = evaluated_tokens_list[-window:] #Is useful if the text_start is bigger than the window
 
     with torch.no_grad():
         for _ in range(0,ntokens):
-            t_text_start = torch.tensor([encoded_tokens_list],device=device)
+            t_text_start = torch.tensor([evaluated_tokens_list],device=device)
             pretemperature_logits = model(t_text_start)[0,-1,:]
+            pretemperature_logits[0] = float("-inf") #The id-token 0 is reserver for padding and currently the model doesn't implement it.
             if (preset == "default"):
                 if top_p is None: top_p = 0.95 
                 if temperature is None: temperature = 0.92           
@@ -195,20 +200,21 @@ def gen_text(model : torch.nn.Module,
             if top_p: logits = __apply_top_p(logits, top_p)
 
             logits_sm = torch.softmax(logits,dim=-1)
-
+            # I get the value from the model predictions for the last window tokens-ids (or less if they aren't enough) 
             if preset == "debug_greedy":
                 logits_sampled = torch.argmax(logits_sm,dim=-1)
             else:
-                logits_sampled = torch.multinomial(logits_sm,1)
-            
-            model_logits = logits_sampled.tolist()
+                logits_sampled = torch.multinomial(logits_sm,1)[-1]
+            model_logits = logits_sampled.item()
+            # I append (extend) the model prediction token ids to final token-id list
+            token_list_result.append(model_logits)
+            # I took from the final token-id list the last window tokens-ids (or less if they aren't enough) 
+            evaluated_tokens_list = token_list_result[-window:]
 
-            if tokenization_name is not None:
-                text_result = text_result + tokenizer.decode(model_logits,id_to_token)
-                encoded_tokens_list = tokenizer.encode(text_result[-window:],token_to_id,rules)
-            else:
-                text_result = text_result + byte_decode(model_logits)
-                encoded_tokens_list = byte_encode(text_result[-window:])
+    if tokenization_name is not None:
+        text_result = tokenizer.decode(token_list_result,id_to_token)
+    else:
+        text_result = byte_decode(token_list_result)
     
     return text_result
 
@@ -224,7 +230,7 @@ def __apply_top_k(logits : torch.Tensor, k : int):
     masked[masked < threshold] = float("-inf")
     return masked
 
-def __apply_top_p(logits : torch.Tensor, p : float): # Revisar
+def __apply_top_p(logits : torch.Tensor, p : float): 
     if p is None or p <= 0 or p >= 1:
         return logits
 

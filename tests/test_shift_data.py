@@ -2,7 +2,7 @@ from src.data import generate_data
 
 def test():
     window = 5
-    data, _ = generate_data(window=window, eval_thr = 0)
+    data, _ , _ = generate_data(window=window, eval_thr = 0)
     x,y = data[0]
     x2,y2 = data[(int)(len(data)/2)]
     x3,y3 = data[-1]
