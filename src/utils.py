@@ -249,7 +249,8 @@ def __apply_top_p(logits : torch.Tensor, p : float):
     return masked
 
 
-def create_run_features(model : torch.nn.Module, path: str, run_date : str = None ,lr : float = None , batch_size : int = None , wd : float = None):
+def create_run_features(model : torch.nn.Module, path: str, run_date : str,
+                        lr : float , batch_size : int, wd : float, tokenization_file_name : str):
     """Generates a features.file in the given path
 
     Parameters
@@ -276,3 +277,4 @@ def create_run_features(model : torch.nn.Module, path: str, run_date : str = Non
         featuresfile.write("lr: " +  str(lr) + "\n")
         featuresfile.write("batch_size: " +  str(batch_size) + "\n")
         featuresfile.write("weight_decay: " +  str(wd) + "\n")
+        featuresfile.write("tokenization_file_name: " +  str(tokenization_file_name) + "\n")

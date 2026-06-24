@@ -137,7 +137,7 @@ def fit(
     best_eval_loss, best_eval_acc, best_train_loss, best_train_acc = float("inf"), 0.0, float("inf"), 0.0
     epoch_time_list = []
     # Features 
-    utils.create_run_features(model,features_path,run_date,optimizer.param_groups[0]['lr'],train_loader.batch_size,optimizer.param_groups[0]['weight_decay'])
+    utils.create_run_features(model,features_path,run_date,optimizer.param_groups[0]['lr'],train_loader.batch_size,optimizer.param_groups[0]['weight_decay'],tokenization_file_name)
     # CSV Head
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f, delimiter=",")
