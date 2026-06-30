@@ -82,9 +82,22 @@ def main():
         if ckpt_path is None:
             raise ValueError("You should specify --ckpt-path when using --eval-only") 
         if args.eval_metrics:
+            # Char_loss is a normalized metric to compare models trained with a different tokenization.
+            dataset_target_ids = dataset_eval.tensors[1].flatten().tolist()
+            num_tokens = len(dataset_target_ids)
+            if (tokenization_name):
+                _, id_to_token, _ = tokenizer.load_from_JSON(tokenization_name)
+                target_text = tokenizer.decode(dataset_target_ids,id_to_token)
+            else:
+                target_text = utils.byte_decode(dataset_target_ids)
+            # Metrics
             val_metrics = train.evaluate(model,dataloader_eval,loss_fn,device) 
-            print("EVALUATION")
-            print(f"Eval - Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}")
+            char_loss = (val_metrics['eval_loss']*num_tokens)/len(target_text)
+            chars_per_token = len(target_text)/num_tokens
+            print("\nEVALUATION METRICS")
+            print(f"Loss: {val_metrics['eval_loss']:.4f}, Acc: {val_metrics['eval_acc']:.4f}") 
+            print(f"Loss per char: {char_loss:.4f}, Avg chars per token: {chars_per_token:.4f}\n")
+
         if (not args.eval_metrics and len(prompt) == 0):
             print("Checkpoint loaded. No evaluation or generation requested.")
     else:

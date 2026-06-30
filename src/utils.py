@@ -90,7 +90,7 @@ def byte_encode(text:str) -> list: # I apply the byte + 1 logic because I want t
    result = [byte + 1 for byte in encoded_text]
    return result
 
-def byte_decode(list_ids:list) -> str: # I apply the x - 1 logic because is encoded thinking on padding
+def byte_decode(list_ids:list) -> str: # I apply the x - 1 logic because the byte_encode function is thought for padding
     list_to_decode = [x - 1 for x in list_ids]
     bytes_to_decode = bytes(list_to_decode)
     return bytes_to_decode.decode(encoding="utf-8",errors="replace")
@@ -134,6 +134,10 @@ def gen_text(model : torch.nn.Module,
     ntokens : int
         Number of new tokens to generate.
 
+    tokenization_name : str, default=None
+        The name of the JSON file of the wished tokenization.
+        If None, a byte_level tokenization will be used for generation.
+
     temperature : float or None, default=None
         Value used to scale the logits before sampling. Lower values make the
         generation more deterministic; higher values make it more random.
@@ -163,6 +167,11 @@ def gen_text(model : torch.nn.Module,
     -------
     str
         The initial prompt plus the generated continuation.
+
+    Notes
+    -------
+    A tokenization_folder wasn't considered on possible parameters. The tokenization_name field it will
+    load the tokenization with that name saved in the default tokenizations folder OR a absolute path can be used instead.
     """
     from . import tokenizer
     
@@ -259,7 +268,7 @@ def create_run_features(model : torch.nn.Module, path: str, run_date : str,
         The model that yo want to save its features.
     path : str
         The wished path for the file creation.
-    run_date,lr,batch_size,wd : str,float,int,float
+    run_date,lr,batch_size,wd,tokenization_file_name : str,float,int,float
         The possible extra features to record.
     """
     model_dic = vars(model)

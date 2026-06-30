@@ -4,6 +4,43 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TOKENIZATIONS_FOLDER_PATH = PROJECT_ROOT / "tokenizations"
 
 def encode(text:str,token_to_id:dict,rules:dict) -> list:
+    """
+    Encode text into a list of token IDs using a learned BPE tokenization (token_to_id dictionary + merge rules).
+
+    The input text is split into alphabetic/apostrophe pieces and non-alphabetic
+    pieces. Each piece is then split into characters, and the learned merge rules
+    are applied repeatedly. At each merge step, the rule with the lowest rank is
+    selected first.
+
+    Parameters
+    ----------
+    text : str
+        Text to encode.
+
+    token_to_id : dict
+        Mapping from token strings to their integer IDs.
+
+    rules : dict
+        Mapping from token pairs to merge information. Each key is a tuple
+        ``(left_token, right_token)``. Each value must contain:
+            - ``"rank"``: priority of the merge rule. Lower rank means higher priority.
+            - ``"result"``: token produced by merging the pair.
+
+    Returns
+    -------
+    list
+        Flat list of token IDs representing the encoded text.
+
+    Raises
+    ------
+    KeyError
+        If a produced token is not present in ``token_to_id``.
+
+    Notes
+    -----
+    This function assumes that all characters and merged tokens appearing in the
+    input text exist in ``token_to_id``.
+    """
     import re
 
     pieces = re.findall(r"([a-zA-Z']+|[^a-zA-Z']+)",text)
@@ -38,6 +75,30 @@ def encode(text:str,token_to_id:dict,rules:dict) -> list:
     return id_list
 
 def decode(list_ids:list,id_to_token:dict) -> str:
+    """
+    Decode a list of token IDs back into text.
+
+    Each ID is mapped to its corresponding token string using ``id_to_token`` dict.
+    The final text is reconstructed by joining all decoded token strings in order.
+
+    Parameters
+    ----------
+    list_ids : list
+        List of token IDs to decode.
+
+    id_to_token : dict
+        Mapping from integer token IDs to token strings.
+
+    Returns
+    -------
+    str
+        Decoded text.
+
+    Raises
+    ------
+    KeyError
+        If an ID is not present in ``id_to_token``.
+    """
     decoded_text_list = []
 
     for i in range(0,len(list_ids)):
@@ -50,6 +111,47 @@ def decode(list_ids:list,id_to_token:dict) -> str:
 
 
 def create_bpe_tokenization(text:str,new_tokens:int) -> tuple[dict,dict,dict]: # token_to_id, id_to_token, rules
+    """
+    Create a BPE-like tokenization from a training text.
+
+    The initial vocabulary contains characters with code points from 0 to 255.
+    The training text is split into repeated text pieces of length two or more,
+    separating alphabetic/apostrophe pieces from non-alphabetic pieces.
+
+    The algorithm repeatedly finds the most frequent adjacent token pair and creates
+    a merge rule for it. Each learned rule receives a rank based on the order in
+    which it was created.
+
+    Parameters
+    ----------
+    text : str
+        Training text used to learn the merge rules.
+
+    new_tokens : int
+        Maximum number of new tokens to create through pair merges.
+
+    Returns
+    -------
+    tuple[dict, dict, dict]
+        Tuple containing ``token_to_id``, ``id_to_token`` and ``rules``.
+
+        ``token_to_id`` maps token strings to integer IDs.
+
+        ``id_to_token`` maps integer IDs to token strings.
+
+        ``rules`` maps token pairs to merge information. Each key is a tuple
+        ``(left_token, right_token)``. Each value contains:
+        - ``"rank"``: order in which the rule was created.
+        - ``"result"``: token produced by merging the pair.
+
+    Notes
+    -----
+    Token IDs start at 1. ID 0 is intentionally unused by this function, which makes
+    it available for padding if needed elsewhere.
+
+    The base vocabulary is limited to characters with code points from 0 to 255.
+    Characters outside that range may require additional handling.
+    """
     import re
     from collections import Counter
 
@@ -111,7 +213,43 @@ def create_bpe_tokenization(text:str,new_tokens:int) -> tuple[dict,dict,dict]: #
     return token_to_id, id_to_token, rules
 
 
-def save_to_JSON(token_to_id : dict, id_to_token : dict, rules : dict, file_name : str = None, folder_path : str = None):
+def save_to_JSON(token_to_id : dict, id_to_token : dict, rules : dict, file_name : str = None, folder_path : str = None) -> Path:
+    """
+    Save a tokenization to a JSON file.
+
+    The saved file contains metadata, vocabulary mappings, and merge rules. Since
+    JSON does not support tuple keys, merge rules are stored as a list of dictionaries
+    with explicit ``left``, ``right``, ``result`` and ``rank`` fields.
+
+    Parameters
+    ----------
+    token_to_id : dict
+        Mapping from token strings to integer IDs.
+
+    id_to_token : dict
+        Mapping from integer IDs to token strings.
+
+    rules : dict
+        Mapping from token pairs to merge information.
+
+    file_name : str or None, default=None
+        Name of the JSON file. If None, a timestamped file name is generated.
+
+    folder_path : str or None, default=None
+        Folder where the JSON file will be saved. If None, the default tokenizations
+        folder is used.
+
+    Returns
+    -------
+    pathlib.Path
+        Path of the saved JSON file.
+
+    Notes
+    -----
+    If ``folder_path`` is None, the default tokenizations folder is created if it
+    does not exist. If a custom ``folder_path`` is provided, this function assumes
+    that the folder already exists.
+    """
     import json
     import os, datetime
 
@@ -149,6 +287,50 @@ def save_to_JSON(token_to_id : dict, id_to_token : dict, rules : dict, file_name
     return path
 
 def load_from_JSON(file_name : str, folder_path : str = None) -> tuple[dict,dict,dict]:
+    """
+    Load a tokenization from a JSON file.
+
+    The function restores the token-to-ID mapping, ID-to-token mapping, and merge
+    rules from a previously saved tokenization JSON file.
+
+    Since JSON stores dictionary keys as strings, the keys of ``id_to_token`` are
+    converted back to integers after loading.
+
+    Parameters
+    ----------
+    file_name : str
+        Name or path of the JSON file to load.
+
+    folder_path : str or None, default=None
+        Folder where the JSON file is located. If None, the default tokenizations
+        folder is used.
+
+    Returns
+    -------
+    tuple[dict, dict, dict]
+        Tuple containing ``token_to_id``, ``id_to_token`` and ``rules``.
+
+        ``token_to_id`` maps token strings to integer IDs.
+
+        ``id_to_token`` maps integer IDs to token strings.
+
+        ``rules`` maps token pairs to merge information. Each key is a tuple
+        ``(left_token, right_token)``. Each value contains:
+        - ``"rank"``: priority/order of the merge rule.
+        - ``"result"``: token produced by merging the pair.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the JSON file does not exist.
+
+    KeyError
+        If the JSON file does not contain the expected fields.
+
+    Notes
+    -----
+    If ``file_name`` is an absolute path folder_path will be ignored and the full path will be used instead.
+    """
     import json
     rules = {}
     # If file_name is an absolute path, the left part isn't evaluated (path is equivalent to file_name)

@@ -94,6 +94,9 @@ def fit(
 
     run_dir : str, default="./runs"
         Directory where the run folder, metrics, checkpoints and plots are saved.
+    
+    tokenization_file_name : str, default=None
+        The name of the tokenization_file, it can be an absolute path or the name of the file in the tokenizations folder.
 
     Returns
     -------
@@ -122,7 +125,7 @@ def fit(
     train_time = 0
     train_metrics = {"train_loss":0,"train_acc":0}
     steps_pre_eval = 0
-    pre_eval_loss = None
+    best_pre_eval_loss = None
     vpatience = early_stopping if early_stopping is not None else float("inf") 
     max_steps = max_steps if max_steps is not None else float("inf") 
     epochs = epochs if epochs is not None else float("inf")
@@ -186,12 +189,12 @@ def fit(
                 train_metrics = {"train_loss": 0.0, "train_acc": 0.0}
                 steps_pre_eval = 0
                 #UPDATE LOOP
-                if pre_eval_loss is not None and eval_metrics["eval_loss"] >= pre_eval_loss:
+                if best_pre_eval_loss is not None and eval_metrics["eval_loss"] >= best_pre_eval_loss:
                     last_improve+=1
                 else:
                     utils.save_checkpoint(model,optimizer,act_step,best_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
                     last_improve=0
-                pre_eval_loss = eval_metrics["eval_loss"] 
+                    best_pre_eval_loss = eval_metrics["eval_loss"] # Best previous eval loss
                 utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
                 if((max_steps and act_step >= max_steps - 1) or last_improve > vpatience):
                     act_step+=1

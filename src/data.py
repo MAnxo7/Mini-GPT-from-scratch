@@ -18,8 +18,11 @@ def generate_data(window : int,
         The window which is used to slice the text.
     stride : int
         The stride between each window
-    file : str
+    data_file : str
         The path of the text data_file.
+    tokenization_name : str
+        The name of the tokenization_file, it can be an absolute path or the name of the file in the tokenizations folder.
+        If not adjunted the dataset will be created with a Byte-Level tokenization.
     eval_thr : float
         The threshold of the eval part of the text.
 
