@@ -44,7 +44,7 @@ def save_checkpoint(model : torch.nn.Module, optimizer : torch.optim.Optimizer, 
         "epoch_step": int(epoch_step),
         "steps_mode": bool(steps_mode),
         "tokenization_file_name":tokenization_file_name,
-        "extra": extra or {},
+        "extra": {} if not extra else extra,
     }
     torch.save(payload, path)
     

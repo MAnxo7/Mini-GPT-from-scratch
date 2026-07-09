@@ -1,6 +1,7 @@
 from src.data import generate_data
 
 def test():
+    # Data shape is consistent between input and target.
     window = 5
     data, _ , _ = generate_data(window=window, eval_thr = 0)
     X, Y = data[0]

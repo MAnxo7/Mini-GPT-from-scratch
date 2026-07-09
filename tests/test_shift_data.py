@@ -1,6 +1,8 @@
 from src.data import generate_data
 
 def test():
+    # The data is shifted correctly. That is to say the target is shifted one posititon to the right from source.
+    # (The model learn that tokens must predict the next consecutive token)
     window = 5
     data, _ , _ = generate_data(window=window, eval_thr = 0)
     x,y = data[0]

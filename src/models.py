@@ -1,7 +1,7 @@
 import torch
 
 class mini_GPT(torch.nn.Module):
-    def __init__(self, vocab_size : int = 257,dropout = 0.3, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
+    def __init__(self, vocab_size : int = 257,dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
         """
         Create a small decoder-only GPT-style Transformer model for byte-level
         language modeling.
@@ -84,13 +84,13 @@ class mini_GPT(torch.nn.Module):
         ----------
         X : torch.Tensor
             Input tensor of byte token IDs with shape [batch_size, sequence_length].
-            Each value must be in the range [0, 255].
+            Each value must be in the range [0, vocab_size-1].
 
         Returns
         -------
         torch.Tensor
             Logits over the byte-level vocabulary with shape
-            [batch_size, sequence_length, 256].
+            [batch_size, sequence_length, vocab_size].
 
             logits[:, t, :] represents the model's prediction for the next byte
             after position t. 

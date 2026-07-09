@@ -192,10 +192,10 @@ def fit(
                 if best_pre_eval_loss is not None and eval_metrics["eval_loss"] >= best_pre_eval_loss:
                     last_improve+=1
                 else:
-                    utils.save_checkpoint(model,optimizer,act_step,best_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
+                    utils.save_checkpoint(model,optimizer,act_step,best_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=None)
                     last_improve=0
                     best_pre_eval_loss = eval_metrics["eval_loss"] # Best previous eval loss
-                utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=scheduler)
+                utils.save_checkpoint(model,optimizer,act_step,last_ckpt_path,steps_mode=STEP_MODE,tokenization_file_name=tokenization_file_name,extra=None)
                 if((max_steps and act_step >= max_steps - 1) or last_improve > vpatience):
                     act_step+=1
                     break

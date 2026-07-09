@@ -10,7 +10,8 @@ def generate_data(window : int,
                   data_file : str | Path = str(PROJECT_ROOT / "tiny_shakespare.txt"), 
                   tokenization_name : str = None,
                   eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset,int]:
-    """Generates a dataset with the *.txt file given
+    """
+    Generates a dataset with the *.txt file given
 
     Parameters
     -----------

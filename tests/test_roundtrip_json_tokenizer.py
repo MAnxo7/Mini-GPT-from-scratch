@@ -6,7 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_PATH = PROJECT_ROOT / "tiny_shakespare.txt"
 
 def test():
-
+    # The BPE-tokenization is the same after saving and loading it from a .json file.
     og_text : str = DATASET_PATH.read_text(encoding="utf-8")
     new_text = og_text[0:int(len(og_text)/4)]
     file_name = "temp_test.json"

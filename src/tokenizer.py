@@ -188,15 +188,15 @@ def create_bpe_tokenization(text:str,new_tokens:int) -> tuple[dict,dict,dict]: #
         rules[max_count_element] = rule_value
 
         for token_word in tokens: # Cada palabra en la lista de palabras segmentada en tokens...
-            i = 0
-            while i < len(token_word) - 1:
-                key = (token_word[i],token_word[i+1])
+            j = 0
+            while j < len(token_word) - 1:
+                key = (token_word[j],token_word[j+1])
                 value = rules.get(key)
                 if value is not None:
-                    token_word[i] = value["result"]
-                    del token_word[i+1]
+                    token_word[j] = value["result"]
+                    del token_word[j+1]
                 else:
-                    i+=1
+                    j+=1
 
     new_vocab = [rule["result"] for rule in rules.values()]
 

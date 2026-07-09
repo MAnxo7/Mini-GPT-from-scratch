@@ -63,15 +63,16 @@ def main():
         print("warning: No tokenization_name provided, so a byte-level tokenization will be used during training/evaluation", file=sys.stderr)
 
     dataset_train, dataset_eval, vocab_size = data.generate_data(window,data_file=file,stride=stride,tokenization_name=tokenization_name)
-    dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=numworkers,persistent_workers=persistent_workers,pin_memory=pin_memory)
-    dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=numworkers,persistent_workers=persistent_workers,pin_memory=pin_memory)
+    dataloader_train = DataLoader(dataset=dataset_train,batch_size = batch,num_workers=numworkers,persistent_workers=persistent_workers,pin_memory=pin_memory) if not args.eval_only else None
+    dataloader_eval = DataLoader(dataset=dataset_eval,batch_size = batch,num_workers=numworkers,persistent_workers=persistent_workers,pin_memory=pin_memory) if not (args.eval_only and not args.eval_metrics) else None
 
     if (ckpt_path is None):
         model = models.mini_GPT(vocab_size=vocab_size) 
     else:
         ckpt, model = utils.load_checkpoint(path=ckpt_path)
         if (ckpt["tokenization_file_name"] != tokenization_name and (tokenization_name == None or ckpt["tokenization_file_name"] != Path(tokenization_name).resolve().name)):
-            print("warning: The given tokenization_file_name doesn't match the checkpoint one. Training/evaluation are likely to be broken.", file=sys.stderr)
+            #print("warning: The given tokenization_file_name doesn't match the checkpoint one. Training/evaluation are likely to be broken.", file=sys.stderr)
+            raise ValueError("The given tokenization_file_name doesn't match the checkpoint one.") 
 
     model = model.to(device)
     loss_fn = torch.nn.CrossEntropyLoss().to(device)

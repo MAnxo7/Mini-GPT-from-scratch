@@ -1,22 +1,17 @@
-
-
-#BASIC CONFIG
-def test():
-    import torch
-    from torch.utils.data import TensorDataset
-    from torch.utils.data import DataLoader
-    from src import utils,models,train,data
+import torch
+from src import utils,models,train
+from src.data import generate_data
     
+def test():
+    # The model can memorize the predictions of a 16-length text. 
     utils.set_seed(0,deterministic=True)
 
     epochs = 15
     lr = 3e-4
     device = torch.device("cpu")
-
-    # DATALOADERS CREATION
     window = 16
 
-    dataset_train, _ , _= data.generate_data(window,data_file="./tiny_shakespare.txt",eval_thr=0)
+    dataset_train, _ , _= generate_data(window,eval_thr=0)
 
     xn , yn = dataset_train[0]
 

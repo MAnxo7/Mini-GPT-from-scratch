@@ -1,13 +1,13 @@
-def test():
-    import torch
-    from torch.utils.data import TensorDataset
-    from torch.utils.data import DataLoader
-    from src import utils,models,train,data
+import torch
+from src import utils,models,train,data
 
+def test():
+    # Token logits doesn't depend on consequent tokens. (The causal mask is being applied correctly)
     device = utils.get_device()
 
     model = models.mini_GPT(dropout=0).to(device)
 
+    # The logits for "a" must be the same despite having a different sufix.
     texto1 = "a" + "bbbbbbbbbbbbbb"
     texto2 = "a" + "zzzzzzzzzzzzzz"
     
@@ -25,4 +25,4 @@ def test():
     logits2 = model(tensor_test)
 
     thr = 1e-6
-    assert torch.all(logits1[0,0,:] - logits2[0,0,:] < thr)
+    assert torch.all(abs(logits1[0,0,:] - logits2[0,0,:]) < thr)
