@@ -119,7 +119,7 @@ Current default model configuration:
 
 | Parameter | Default |
 |---|---:|
-| Vocabulary size | 257 if tokenenization-name is not provided else is used the tokenization one |
+| Vocabulary size | 257 or vocab-size of the used tokenization |
 | Embedding dimension | 256 |
 | Transformer layers | 6 |
 | Attention heads | 8 |
