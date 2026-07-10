@@ -3,10 +3,10 @@ import torch
 class mini_GPT(torch.nn.Module):
     def __init__(self, vocab_size : int = 257,dropout = 0.1, d_model = 256, n_layers = 6, n_heads = 8, context_L = 256, d_ff = None):
         """
-        Create a small decoder-only GPT-style Transformer model for byte-level
+        Create a small decoder-only GPT-style Transformer model for byte-level or BPE
         language modeling.
 
-        The model receives token IDs in the range [0, 255], applies token and
+        The model receives token IDs in the range vocab_size, applies token and
         positional embeddings, processes the sequence with a causal Transformer
         stack, and projects the final hidden states to logits over the byte-level
         vocabulary.

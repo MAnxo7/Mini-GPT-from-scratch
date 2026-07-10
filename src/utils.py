@@ -109,7 +109,7 @@ def gen_text(model : torch.nn.Module,
     """
     Generate text autoregressively from an initial prompt.
 
-    The function encodes the initial text into byte-level token IDs and then
+    The function encodes the initial text into token IDs and then
     generates new tokens one by one. At each generation step, the model receives
     the current context, produces logits for all positions, and only the logits
     from the last position are used to sample the next byte token.
@@ -265,9 +265,9 @@ def create_run_features(model : torch.nn.Module, path: str, run_date : str,
     Parameters
     ----------
     model : torch.nn.Module
-        The model that yo want to save its features.
+        The model that you want to save its features.
     path : str
-        The wished path for the file creation.
+        The desired path for the file creation.
     run_date,lr,batch_size,wd,tokenization_file_name : str,float,int,float
         The possible extra features to record.
     """
