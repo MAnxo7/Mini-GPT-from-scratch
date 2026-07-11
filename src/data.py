@@ -1,6 +1,5 @@
 from torch.utils.data import TensorDataset, DataLoader
 import torch
-<<<<<<< HEAD
 from . import tokenizer, utils
 from pathlib import Path
 
@@ -13,12 +12,6 @@ def generate_data(window : int,
                   eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset,int]:
     """
     Generates a dataset with the *.txt file given
-=======
-from . import utils
-
-def generate_data(window : int, stride : int = 1, file : str = "./tiny_shakespare.txt", eval_thr : float = 0.1) -> tuple[TensorDataset,TensorDataset]:
-    """Generates a dataset with the *.txt file given
->>>>>>> main
 
     Parameters
     -----------
